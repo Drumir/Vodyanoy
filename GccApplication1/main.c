@@ -96,22 +96,40 @@ int main(void)
   LCDGotoXY(0, 3);
   LCDWriteString("IP: ");
   uart_send("AT+SAPBR=2,1");
-  while(rxb[cur_str][0] == 0); rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;  // Выкинем эхо
+  while(rxb[cur_str][0] == 0); dropMessage();  // Выкинем эхо
   while(rxb[cur_str][0] == 0); 
-  strncpy(str, &rxb[cur_str][13], 14); rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+  strncpy(str, &rxb[cur_str][13], 14); dropMessage();
   LCDWriteString(str);
-  /*
+  
+  LCDGotoXY(0, 0);
+  LCDWriteString("drumir.16mb.com ");
   uart_send("AT+HTTPINIT");
   waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/merman.php\"");
   waitAnswer("OK", 20);
-  uart_send("AT+HTTPACTION=0");
-  waitAnswer("OK", 20);
-  while(rxb[cur_str][0] == 0);renewLCD();
+  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:0,200,20
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
+  while(rxb[cur_str][0] == 0);
+  if(strncmp(&rxb[cur_str][0], "+HTTPACTION:0,200,", 18) == 0) 
+    LCDWriteString("ОК");
+  else {
+    strncpy(str, &rxb[cur_str][14], 3);
+    str[3] = '\0';
+    LCDWriteString(str);
+  }
+  dropMessage();
+
+  LCDGotoXY(0, 1);
   uart_send("AT+HTTPREAD=0,20");
-*/
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
+  while(rxb[cur_str][0] == 0);
+  LCDWriteString(&rxb[cur_str][1]);dropMessage();
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
+
   while (1) 
     {
     while(rxb[cur_str][0] == 0);
