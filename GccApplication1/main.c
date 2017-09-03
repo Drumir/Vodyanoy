@@ -32,6 +32,8 @@ void incomingMessage(char* s);
 void renewLCD(void);
 void SIM900_PowerOn(void);
 void SIM900_WaitRegistration(void);
+uint8_t waitAnswer(char *answer, uint16_t timeout); 
+void dropMessage(void);
 
 
 
@@ -59,52 +61,62 @@ int main(void)
     sbi(PORTC, 6);      // Выведем TWILCD из ресета;
     _delay_ms(100);
     LCDInit(0x60);
-  LCDClear();
-    LCDGotoXY(0, 0); 
   uart_init();
   sei();
-//  _delay_ms(2000);
   
   for(uint8_t i = 0; i < RXBUFSTRCOUNT; i ++)
     for(uint16_t j = 0; j < RXBUFMAXSIZE; j ++)
       rxb[i][j] = 0;
       
+  LCDClear();
+  LCDGotoXY(0, 0);
+  LCDWriteString("Включение ");
   SIM900_PowerOn();   
-  LCDPuts("Sim900_Up");
-  _delay_ms(1000);
+  LCDWriteString("ОК");
+  LCDGotoXY(0, 1);
+  LCDWriteString("Регистрация ");
   SIM900_WaitRegistration();
-  LCDPuts("Registration 0,1");
+  LCDWriteString("ОК");
 
+  LCDGotoXY(0, 2);
+  LCDWriteString("GPRS сессия ");
   uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+  waitAnswer("OK", 20);
   uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+  waitAnswer("OK", 20);
   uart_send("AT+SAPBR=3,1,\"USER\",\"\"");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+  waitAnswer("OK", 20);
   uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
-  uart_send("AT+SAPBR=1,1");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+  waitAnswer("OK", 20);
+  do{
+    uart_send("AT+SAPBR=1,1");
+  } while(waitAnswer("OK", 20) != 1);
+  LCDWriteString("ОК");
+
+  LCDGotoXY(0, 3);
+  LCDWriteString("IP: ");
   uart_send("AT+SAPBR=2,1");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
-  LCDPuts("GPRS Connected");
-
+  while(rxb[cur_str][0] == 0); rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;  // Выкинем эхо
+  while(rxb[cur_str][0] == 0); 
+  strncpy(str, &rxb[cur_str][13], 14); rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+  LCDWriteString(str);
+  /*
   uart_send("AT+HTTPINIT");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+  waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
-  uart_send("AT+HTTPPARA=\"URL\",\"http://ya.ru\"");
-  _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+  waitAnswer("OK", 20);
+  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/merman.php\"");
+  waitAnswer("OK", 20);
   uart_send("AT+HTTPACTION=0");
+  waitAnswer("OK", 20);
   while(rxb[cur_str][0] == 0);renewLCD();
-  while(rxb[cur_str][0] == 0);renewLCD();
-  _delay_ms(5000);
-  uart_send("AT+HTTPREAD=0,250");
-
-    while (1) 
+  uart_send("AT+HTTPREAD=0,20");
+*/
+  while (1) 
     {
     while(rxb[cur_str][0] == 0);
-    renewLCD();
+//    renewLCD();
+    _delay_ms(200);
     }
 }
 
@@ -130,39 +142,37 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
   }
   if (bstat == 0b00110000)       // Кнопка влево
   {
-    LCDClear();  
+    //LCDPuts(&rxb[cur_str][0]);
+    LCDClear();
+    uart_send("AT+HTTPREAD=0,20");
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  while(rxb[cur_str][0] == 0);renewLCD();
+
+
   }
   
   if (bstat == 0b01110000)      // Кнопка вправо
-  {  
-    switch(mode)
-    {
-      case 0: {uart_send("AT+CGATT?");break;}
-      case 1: {uart_send("AT+CGATT=1");break;}
-      case 2: {uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\""); break; }
-      case 3: {uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\""); break; }
-      case 4: {uart_send("AT+SAPBR=3,1,\"USER\",\"\""); break; }
-      case 5: {uart_send("AT+SAPBR=3,1,\"PWD\",\"\""); break; }
-      case 6: {uart_send("AT+SAPBR=1,1"); break; }
-      case 7: {uart_send("AT+HTTPINIT"); break; }
-      case 8: {uart_send("AT+HTTPPARA=\"CID\",1"); break; } 
-    
-    
-      /*                uart_send("AT+SAPBR=2,1"); break; 
-      uart_send("AT+SAPBR=1,1"); _delay_ms(300); 
-      uart_send("AT+SAPBR=2,1"); break; 
-      break;} 
-      case 1: {uart_send("AT+SAPBR=4,1"); break; } 
-      case 2: {uart_send("AT+HTTPINIT"); break; } 
-      case 3: {uart_send("AT+HTTPPARA=\"CID\",1"); break; } 
-      case 4: {uart_send("AT+HTTPPARA=\"URL\",\"https://ya.ru\""); break; } 
-      case 5: {uart_send("AT+HTTPACTION=0"); break; } 
-      case 6: {uart_send("AT+HTTPREAD"); break; } 
-      case 7: {uart_send("AT+HTTPTERM"); break; } 
-      case 8: {uart_send("AT+SAPBR=0,1"); break; } */
-    }  
-    mode ++;
-    if(mode == 9) mode = 0;  
+  {   
+    uart_send("AT+SAPBR=1,1");
+    _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+    uart_send("AT+SAPBR=2,1");
+    _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
+
+	  uart_send("AT+HTTPINIT");
+	  waitAnswer("OK", 20);
+	  uart_send("AT+HTTPPARA=\"CID\",1");
+	  waitAnswer("OK", 20);
+	  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/merman.php\"");
+	  waitAnswer("OK", 20);
+	  uart_send("AT+HTTPACTION=0");
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  while(rxb[cur_str][0] == 0);renewLCD();
+	  _delay_ms(2000);
+	  uart_send("AT+HTTPREAD=0,14");
   }
 }
 //------------------------------------------------------------------------------
@@ -179,7 +189,7 @@ ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
   uint8_t rxbyte;
   rxbyte = UDR;
   rxbuf[length] = rxbyte; 
-  sei();
+//  sei();
   length ++;
   if(length == RXBUFMAXSIZE - 2){      // Если длинна сообщения почти достигла лимита
     rxbuf[length] = 0;          // Допишем в конец '/0' 
@@ -280,7 +290,7 @@ void SIM900_PowerOn(void)
   sbi(PORTD, 7);      // Enable 4.0v 
   _delay_ms(200);
   
-  if(PINB & 0b00000001 != 0)   // Модуль уже включен
+  if((PINB & 0b00000001) != 0)   // Модуль уже включен
     return;
      
   cbi(PORTB, 1);      // Тянем PWRKEY вниз
@@ -288,37 +298,42 @@ void SIM900_PowerOn(void)
   sbi(PORTB, 1);      // Отпускаем PWRKEY
   while((PINB & 0b00000001) == 0)_delay_ms(50);    // Ждем 1 на STATUS
   uart_send("AT");
-  while(rxb[cur_str][0] == 0);renewLCD();
-  while(rxb[cur_str][0] == 0);renewLCD();
+  while(rxb[cur_str][0] == 0);dropMessage();
+  while(rxb[cur_str][0] == 0);dropMessage();
 }
 
 //----------------------------------------------------------------
 void SIM900_WaitRegistration(void)
 {
+uint8_t sucess_flag = 0;
+  do{
     uart_send("AT+CREG?");
-    while(rxb[cur_str][0] == 0);renewLCD();
+    while(rxb[cur_str][0] == 0);dropMessage();        // Выбрасываем эхо
     while(rxb[cur_str][0] == 0);
-    if(strncmp(&rxb[cur_str][0], "+CREG: 0,1", 10) == 0) mode = 1; 
-    renewLCD();    
-    while(rxb[cur_str][0] == 0);renewLCD();    
+    if(strncmp(&rxb[cur_str][0], "+CREG: 0,1", 10) == 0) sucess_flag = 1; // Анализируем ответ
+    dropMessage();  
+    while(rxb[cur_str][0] == 0);dropMessage();      // Выбрасываем "ОК"
+  }while(sucess_flag == 0);
   
 }
 
 uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0
 {
-  uint8_t fix_cur_str;
-  TimeoutTackts = timeout; 
-  while(TimeoutTackts != 0){
+  TimeoutTackts = timeout;			// Запустим отсчёт таймаута
+  while(1){
     while(rxb[cur_str][0] == 0 && TimeoutTackts != 0);
-    if(TimeoutTackts == 0) 
+    if(TimeoutTackts == 0)                                          // Если вышли из цикла по таймауту, возвращаем 0 
       return 0;
-    if(strncmp(&rxb[cur_str][0], answer, strlen(answer)) == 0){ 
-      rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+    if(strncmp(&rxb[cur_str][0], answer, strlen(answer)) == 0){     // Если получен нужный ответ, возвращаем 1
+      dropMessage();
       return 1;                                                
     }
-    rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+    dropMessage();		// "неожиданные" сообщения теряются
   } 
   return 0;
 }
 
-int
+void dropMessage(void)
+{
+  rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+}
