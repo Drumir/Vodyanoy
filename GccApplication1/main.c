@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "global.h"
-#include "TWI_LCD.h"
+#include "HD44780SPI.h"
 #include <util/delay.h>
 #include "uart.h"
 #include "vodyanoy2.0.h"
@@ -39,11 +39,11 @@ void dropMessage(void);
 
 int main(void)
 {
-  DDRC  = 0b01000011;    // 7-н, 6-/reset_lcd, 5-2 - н, 1-SDA_LCD, 0-SCL_LCD
-  PORTC = 0b11000011;
+  DDRC  = 0b00100000;    // 7-н, 6-18b20, 5-LCD_RESET, 4-0 - н
+  PORTC = 0b00100000;
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111100;
-  DDRB  = 0b11111010;    // 7-4 отсутствующий SPI_LCD, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
+  DDRB  = 0b10111010;    // 7-LCD_CLK, 6-LCD_BUSY, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
   PORTB = 0b00000010;
 
   sbi(GICR, 7);          // Разрешить INT1  Для клавы
@@ -54,23 +54,16 @@ int main(void)
   TCCR1B =  0b00001100;	// Делитель для таймера1 - 100 - 256
   OCR1A = 3125;			// Считать до 3125	Прерывание будет генерироваться с частотой 10 Гц
   TIMSK = 0b00010000;		// По совпадению счектчика1 и OCR1A
-
   
-    cbi(PORTC, 6);      // reset TWILCD;
-    _delay_ms(100);
-    sbi(PORTC, 6);      // Выведем TWILCD из ресета;
-    _delay_ms(100);
-    LCDInit(0x60);
   uart_init();
+  LCD_init();
   sei();
   
   for(uint8_t i = 0; i < RXBUFSTRCOUNT; i ++)
     for(uint16_t j = 0; j < RXBUFMAXSIZE; j ++)
       rxb[i][j] = 0;
       
-  LCDClear();
-  LCDGotoXY(0, 0);
-  LCDWriteString("Включение ");
+  /*  
   SIM900_PowerOn();   
   LCDWriteString("ОК");
   LCDGotoXY(0, 1);
@@ -129,7 +122,7 @@ int main(void)
   while(rxb[cur_str][0] == 0);
   LCDWriteString(&rxb[cur_str][1]);dropMessage();
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-
+*/
   while (1) 
     {
     while(rxb[cur_str][0] == 0);
@@ -150,9 +143,9 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     cbi(PORTB, 1);
     _delay_ms(1500);
     sbi(PORTB, 1);
-    LCDPuts("*TurnOFF*");
+    LCD_Puts("*TurnOFF*");
     while((PINB & 0b00000001) == 1)_delay_ms(10);      // Ждем 0 на STATUS
-    LCDPuts("*PowerDown*");
+    LCD_Puts("*PowerDown*");
     cbi(PORTD, 7);      // Disable 4.0v
   }
   if (bstat == 0b01100000)       // Кнопка вверх
@@ -161,7 +154,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
   if (bstat == 0b00110000)       // Кнопка влево
   {
     //LCDPuts(&rxb[cur_str][0]);
-    LCDClear();
+    LCD_clear();
     uart_send("AT+HTTPREAD=0,20");
 	  while(rxb[cur_str][0] == 0);renewLCD();
 	  while(rxb[cur_str][0] == 0);renewLCD();
@@ -293,13 +286,13 @@ void incomingMessage(char* s)
 void renewLCD(void)
 {
   if(rxb[cur_str][0] != 0) {
-    LCDPuts(&rxb[cur_str][0]);
+    LCD_Puts(&rxb[cur_str][0]);
     rxb[cur_str][0] = 0;
     cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
   }
-  LCDGotoXY(110, 0);
+  LCD_gotoXY(110, 0);
   itoa(str_count, buf, 10);
-  LCDWriteString(buf);
+  LCD_writeString(buf);
 }
 
 //----------------------------------------------------------------
