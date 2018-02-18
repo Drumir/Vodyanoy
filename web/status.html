@@ -1,0 +1,91 @@
+﻿<html>
+<head>       
+  <meta charset="utf-8">
+  <title>Водяной 2.0</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <script type="text/javascript" src="script.js"></script>
+</head>
+<body> 
+  <div id="caption" align="absmiddle"><h1>Водяной 2.0</h1></div> 
+  <table style="width:100%;"> 
+    <tr>
+      <td class="topmenu" style="background-color:#E4E4E4"><a href="status.html">Статус</a></td>
+      <td class="topmenu"><a href="history.html">История</a></td>
+      <td class="topmenu"><a href="options.html">Настройки</a></td>
+      <td class="topmenu"><a href="help.html">Помощь</a></td>
+    </tr>
+  </table> 
+  <div id="main"> 
+    <div id="leftCol" style="float:left; width:50%">
+      <div id="pump" class="block">
+        <h3>Насос</h3>
+        <p>выключен на протяжении 3:42</p>
+        <p>осталось отдыхать 0:18</p>
+      </div>
+      <div id="warm" class="block">
+        <h3>Обогреватель</h3>
+        <p>выключен на протяжении 3 часов</p>
+        <div id="graph">
+          <img src="graph.png" style="height:200px">
+        </div>
+      </div>
+      <div id="door" class="block">
+        <h3>Дверь</h3>
+        <p> закрыта 8 дней</p> 
+      </div>
+      <div id="flood" class="block">
+        <h3>Датчик затопления</h3>
+        <p>сухой</p>
+      </div>
+
+    </div> 
+    <div id="rightCol" style="float:left; width:50%">
+      <div id="leftTop" style="float:left;width:100%" class="invisibleDiv"> 
+        <div style="float:left; width:50%;" class="invisibleDiv">
+          <div id="batery" class="block">
+            <p>Аккумулятор</p>
+            <img src="batery.png">
+            <p>78%</p>
+          </div>
+        </div>
+        <div style="float:left; width:50%;">
+          <div id="supply" class="block">
+            <p>Электропитание</p>
+            <p>присутствует</p>
+            <p>2 дня, 18 часов</p>
+          </div>
+        </div>
+      </div>
+      <div  style="float:left;width:100%"> 
+        <div id="powerFail" class="block">
+          <p>Сбоев электропитания</p>
+          <p>коротких (менее 1 мин): 2</p>
+          <p>длинных: 0</p>
+          <p>Суммарное время простоя 56 сек.</p>
+        </div>
+      </div>
+      <div  style="float:left;width:100%"> 
+        <div id="lastConnection" class="block">
+          <p>Последнее обновление: 4:34 назад</p>
+        </div>
+      </div>
+      <div id="leftBottom" style="float:left;width:100%;">
+        <div style="float:left; width:50%;">
+          <div id="traffic" class="block">
+            <p>Трафик</p>
+            <p>12Мб</p>
+          </div> 
+        </div> 
+        <div style="float:left; width:50%;">
+          <div id="balance" class="block">
+            <p>Баланс</p>
+            <p>55.04 руб.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

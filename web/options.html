@@ -1,0 +1,124 @@
+﻿<html>
+<head>       
+  <meta charset="utf-8">
+  <title>Водяной 2.0</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <script type="text/javascript" src=".\js\main.js"></script> 
+  <script type="text/javascript" src=".\js\jquery-2.0.3.min.js"></script>
+</head>
+<body> 
+  <div id="caption" align="center"><h1>Водяной 2.0</h1></div> 
+  <table style="width:100%;"> 
+    <tr>
+      <td class="topmenu"><a href="status.html">Статус</a></td>
+      <td class="topmenu"><a href="history.html">История</a></td>
+      <td class="topmenu" style="background-color:#E4E4E4"><a href="options.html">Настройки</a></td>
+      <td class="topmenu"><a href="help.html">Помощь</a></td>
+    </tr>
+  </table> 
+  <div id="main" style="width:700px;padding:5;margin:3;">  
+    <div class="block" style="display:inline-block;width:40%">
+      <h3> Насос </h3>
+      Время  работы<input type="time" id="PumpWorkTime" min="00:00" max="07:00" step="900"><br>
+      Время простоя<input type="time" id="PumpIdleTime" min="00:00" max="17:00" step="900">
+    </div>
+    <div class="block" style="display:inline-block;">
+      <h3> Обогрев </h3>
+      Температура включения<input type="number" min="0" max="20" id="WarmOnT" value="" stile="height:24">&deg;C<br>
+      Температура вЫключения<input type="number" min="1" max="25" id="WarmOffT" value="">&degC;
+    </div>
+    <div class="block" style="display:inline-block; float:left;width:100%">  
+      <h3> Связь </h3>
+      Докладывать о своём состоянии на сервер каждые <input type="number" min="0" max="1440" width="30" id="ConnectPeriod" value="">минут.<br>
+      (0 - только по звонку от оператора/администратора) 
+    </div>
+    <div class="block" style="display:table;">
+      <h3  align="center">Оповещения</h3> 
+      <table id="optionsTable" width="550">
+        <tbody align="center"> 
+          <tr><td rowspan="2">Что случилось</td><td colspan="2">СМС</td><td colspan="2">Звонок</td></tr>
+          <tr><td>Оператор</td><td>Админ</td><td>Оператор</td><td>Админ</td></tr>
+          <tr>
+            <td>Охлаждение до <input type="number" min="-15" max="20" width="30" id="FreezeT" value="">&deg;C</td>
+            <td><input type="checkbox" id="OpSmsFreeze"></td>
+            <td><input type="checkbox" id="AdmSmsFreeze"></td>
+            <td><input type="checkbox" id="OpCallFreeze"></td>
+            <td><input type="checkbox" id="AdmCallFreeze"></td>
+          </tr>
+          <tr>
+            <td>Нагрев до <input type="number" min="5" max="100" width="30" id="WarmT" value="">&deg;C</td>
+            <td><input type="checkbox" id="OpSmsWarm"></td>
+            <td><input type="checkbox" id="AdmSmsWarm"></td>
+            <td><input type="checkbox" id="OpCallWarm"></td>
+            <td><input type="checkbox" id="AdmCallWarm"></td>
+          </tr>
+          <tr>
+            <td>Открытие двери</td>
+            <td><input type="checkbox" id="OpSmsDoor"></td>
+            <td><input type="checkbox" id="AdmSmsDoor"></td>
+            <td><input type="checkbox" id="OpCallDoor"></td>
+            <td><input type="checkbox" id="AdmCallDoor"></td>
+          </tr>
+          <tr>
+            <td>Затопление</td>
+            <td><input type="checkbox" id="OpSmsFlood"></td>
+            <td><input type="checkbox" id="AdmSmsFlood"></td>
+            <td><input type="checkbox" id="OpCallFlood"></td>
+            <td><input type="checkbox" id="AdmCallFlood"></td>
+          </tr>
+          <tr>
+            <td>Отключение электропитания</td>
+            <td><input type="checkbox" id="OpSmsPwrFail"></td>
+            <td><input type="checkbox" id="AdmSmsPwrFail"></td>
+            <td><input type="checkbox" id="OpCallPwrFail"></td>
+            <td><input type="checkbox" id="AdmCallPwrFail"></td>
+          </tr>
+          <tr>
+            <td>Восстановление электр.</td>
+            <td><input type="checkbox" id="OpSmsPwrRest"></td>
+            <td><input type="checkbox" id="AdmSmsPwrRest"></td>
+            <td><input type="checkbox" id="OpCallPwrRest"></td>
+            <td><input type="checkbox" id="AdmCallPwrRest"></td>
+          </tr>
+          <tr>
+            <td>Нет связи более <input type="number" min="5" max="1440" id="DisconnectionTime" value="">мин.</td>
+            <td><input type="checkbox" id="OpSmsNoConn"></td>
+            <td><input type="checkbox" id="AdmSmsNoConn"></td>
+            <td><input type="checkbox" id="OpCallNoConn"></td>
+            <td><input type="checkbox" id="AdmCallNoConn"></td>
+          </tr>
+          <tr>
+            <td>Баланс менее <input type="number" min="0" max="500" id="Balance" value="">руб.</td>
+            <td><input type="checkbox" id="OpSmsBalans"></td>
+            <td><input type="checkbox" id="AdmSmsBalans"></td>
+            <td><input type="checkbox" id="OpCallBalans"></td>
+            <td><input type="checkbox" id="AdmCallBalans"></td>
+          </tr>
+          <tr>
+            <td>Ежедневный отчет в <input type="time" id="DailyReport" value=""></td>
+            <td><input type="checkbox" id="OpSmsDailyReport"></td>
+            <td><input type="checkbox" id="AdmSmsDailyReport"></td>
+            <td><input type="checkbox" id="OpCallDailyReport"></td>
+            <td><input type="checkbox" id="AdmCallDailyReport"></td>
+          </tr> 
+          <tr>
+            <td colspan="1">№ Оператора</td>
+            <td colspan="4">
+              +7<input type="tel" id="OperatorTel" value="" style="width:80px;">
+            </td>
+          </tr>
+          <tr>
+            <td colspan="1">№ Администратора</td>
+            <td colspan="4">
+              +7<input type="tel" id="AdminTel" value="" style="width:80px;">
+            </td>
+          </tr>
+        </tbody>
+      </table> 
+    </div> 
+     <button id="saveSettings" align="center">Запомнить</button> 
+     <textarea id="DebugText" hidden="false">DebugText</textarea>
+  </div>
+
+</body>
+</html>

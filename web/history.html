@@ -1,0 +1,64 @@
+﻿<html>
+<head>       
+  <meta charset="utf-8">
+  <title>Водяной 2.0</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <script type="text/javascript" src="popup.js"></script>
+</head>
+<body> 
+  <div id="caption" align="absmiddle"><h1>Водяной 2.0</h1></div> 
+  <table style="width:100%;"> 
+    <tr>
+      <td class="topmenu"><a href="status.html">Статус</a></td>
+      <td class="topmenu" style="background-color:#E4E4E4"><a href="history.html">История</a></td>
+      <td class="topmenu"><a href="options.html">Настройки</a></td>
+      <td class="topmenu"><a href="help.html">Помощь</a></td>
+    </tr>
+  </table> 
+  <div id="main"> 
+    <div style="float:left; width:12%">
+      <div id="leftCol" class="block"> 
+        <h3>Типы событий</h3> 
+        <input type="checkbox" name="eventsTypes" value="pump">Насос<br>
+        <input type="checkbox" name="eventsTypes" value="warm">Обогреватель<br>
+        <input type="checkbox" name="eventsTypes" value="supply">Электропитание<br>
+        <input type="checkbox" name="eventsTypes" value="flood">Затопление<br>
+        <input type="checkbox" name="eventsTypes" value="door">Дверь<br>
+        <input type="checkbox" name="eventsTypes" value="balance">Баланс<br>
+        <input type="checkbox" name="eventsTypes" value="connect">Связь<br> 
+        <input type="checkbox" name="eventsTypes" value="other">Остальные<br> 
+        <p>  
+        <button id="showEvents">Показать</button>
+      </div> 
+    </div>
+    <div style="float:left; width:88%;">
+      <div id="rightCol" class="block" style=" display:table;">
+        <table id="historyTable" style="padding:none">
+          <thead> 
+            <tr> 
+              <td width="150">Время</td><td width="150">Тип события</td><td>Описание</td>
+            </tr>
+          </thead> 
+          <tbody> 
+            <tr><td>2017.09.08 14:58</td><td>Остальные</td><td>Водяной включен</td></tr>
+            <tr><td>2017.09.08 14:58</td><td>Связь</td><td>Сеанс связи не удался</td></tr>
+            <tr><td>2017.09.08 14:59</td><td>Баланс</td><td>Баланс 55,42р</td></tr>
+            <tr><td>2017.09.08 15:00</td><td>Насос</td><td>Насос включен по расписанию</td></tr>
+            <tr><td>2017.09.08 15:08</td><td>Связь</td><td>Сеанс связи не удался</td></tr>
+            <tr><td>2017.09.08 15:13</td><td>Связь</td><td>Сеанс связи успешно завершен</td></tr>
+            <tr><td>2017.09.08 15:31</td><td>Дверь</td><td>Дверь открыта</td></tr>
+            <tr><td>2017.09.08 15:31</td><td>Дверь</td><td>Дверь закрыта</td></tr>
+            <tr><td>2017.09.08 15:31</td><td>Насос</td><td>Насос остановлен вручную</td></tr>
+            <tr><td>2017.09.08 15:31</td><td>Электропитание</td><td>Электропитание отключено</td></tr>
+            <tr><td>2017.09.08 15:43</td><td>Связь</td><td>Сеанс связи успешно завершен</td></tr>
+            <tr><td>2017.09.08 15:31</td><td>Электропитание</td><td>Электропитание восстановлено</td></tr>
+            <tr><td>2017.09.08 15:31</td><td>Насос</td><td>Насос включен по расписанию</td></tr>
+          </tbody>
+        </table>
+      </div> 
+    </div>
+
+  </div>
+
+</body>
+</html>
