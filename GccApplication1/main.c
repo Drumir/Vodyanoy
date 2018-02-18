@@ -63,16 +63,14 @@ int main(void)
     for(uint16_t j = 0; j < RXBUFMAXSIZE; j ++)
       rxb[i][j] = 0;
       
-  /*  
+  LCD_Puts("Старт");
+    
   SIM900_PowerOn();   
-  LCDWriteString("ОК");
-  LCDGotoXY(0, 1);
-  LCDWriteString("Регистрация ");
+  LCD_Puts("Регистрация");
   SIM900_WaitRegistration();
-  LCDWriteString("ОК");
+  LCD_Puts("ОК");
 
-  LCDGotoXY(0, 2);
-  LCDWriteString("GPRS сессия ");
+  LCD_Puts("GPRS сессия");
   uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
   waitAnswer("OK", 20);
   uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");
@@ -84,18 +82,16 @@ int main(void)
   do{
     uart_send("AT+SAPBR=1,1");
   } while(waitAnswer("OK", 20) != 1);
-  LCDWriteString("ОК");
+  LCD_Puts("ОК");
 
-  LCDGotoXY(0, 3);
-  LCDWriteString("IP: ");
+  LCD_Puts("IP:");
   uart_send("AT+SAPBR=2,1");
   while(rxb[cur_str][0] == 0); dropMessage();  // Выкинем эхо
   while(rxb[cur_str][0] == 0); 
   strncpy(str, &rxb[cur_str][13], 14); dropMessage();
-  LCDWriteString(str);
+  LCD_Puts(str);
   
-  LCDGotoXY(0, 0);
-  LCDWriteString("drumir.16mb.com ");
+  LCD_Puts("drumir.16mb.com");
   uart_send("AT+HTTPINIT");
   waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"CID\",1");
@@ -107,26 +103,25 @@ int main(void)
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
   while(rxb[cur_str][0] == 0);
   if(strncmp(&rxb[cur_str][0], "+HTTPACTION:0,200,", 18) == 0) 
-    LCDWriteString("ОК");
+    LCD_Puts("ОК");
   else {
     strncpy(str, &rxb[cur_str][14], 3);
     str[3] = '\0';
-    LCDWriteString(str);
+    LCD_Puts(str);
   }
   dropMessage();
 
-  LCDGotoXY(0, 1);
   uart_send("AT+HTTPREAD=0,20");
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
   while(rxb[cur_str][0] == 0);
-  LCDWriteString(&rxb[cur_str][1]);dropMessage();
+  LCD_Puts(&rxb[cur_str][1]);dropMessage();
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-*/
+
   while (1) 
     {
     while(rxb[cur_str][0] == 0);
-//    renewLCD();
+    renewLCD();
     _delay_ms(200);
     }
 }
@@ -226,7 +221,7 @@ void uart_init( void )
 {
   //настройка скорости обмена
   UBRRH = 0;
-  UBRRL = 12;      // для 8МГц 51 - 9600+0.2%ошибки,  25 - 19200+0,2%ошибки,  12 - 
+  UBRRL = 12;      // для 8МГц 51 - 9600+0.2%ошибки,  25 - 19200+0,2%ошибки,  12 - 38400
   //8 бит данных, 1 стоп бит, без контроля четности
   UCSRC = ( 1 << URSEL ) | ( 1 << UCSZ1 ) | ( 1 << UCSZ0 );
   //разрешить передачу, прием данных и прерывание по приёму байта
@@ -290,7 +285,7 @@ void renewLCD(void)
     rxb[cur_str][0] = 0;
     cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
   }
-  LCD_gotoXY(110, 0);
+  LCD_gotoXY(8, 0);
   itoa(str_count, buf, 10);
   LCD_writeString(buf);
 }
