@@ -28,6 +28,8 @@ void SIM900_PowerOn(void);
 void SIM900_WaitRegistration(void);
 uint8_t waitAnswer(char *answer, uint16_t timeout); 
 void dropMessage(void);
+int16_t str2int(const char* str);
+
 
 
 
@@ -63,24 +65,13 @@ int main(void)
     
   SIM900_PowerOn();   
   SIM900_WaitRegistration();
-  
-  uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
-  waitAnswer("OK", 20);
-  uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");
-  waitAnswer("OK", 20);
-  uart_send("AT+SAPBR=3,1,\"USER\",\"\"");
-  waitAnswer("OK", 20);
-  uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");
-  waitAnswer("OK", 20);
-  do{
-    _delay_ms(2000);
-    uart_send("AT+SAPBR=1,1");
-  } while(waitAnswer("OK", 20) != 1);
+  SIM900_EnableGPRS();
   
     uart_send("AT+HTTPINIT");
     waitAnswer("OK", 20);
     uart_send("AT+HTTPPARA=\"CID\",1");
     waitAnswer("OK", 20);
+    
 /*
     strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
     strcat(query, str);
@@ -98,10 +89,6 @@ int main(void)
     while(rxb[cur_str][0] == 0); dropMessage();     // Текст
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
 */
-
-
-
-
   /*
   //LCD_Puts("IP:");
   uart_send("AT+SAPBR=2,1");
@@ -143,6 +130,21 @@ int main(void)
   
   _delay_ms(1000);
   */
+  uart_send("AT+CMGF=1");   // Установить текстовый формат сообщений
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
+
+  uart_send("AT+CSCS=\"GSM\"");   // Установить текстовый формат сообщений
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
+
+  uart_send("ATD*105#;");         // Баланс на английском
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
+  while(rxb[cur_str][0] == 0);
+  State.balance = str2int(rxb[cur_str]+10);
+  dropMessage();     // Отбросим
+
   while (1) 
     {
     while(rxb[cur_str][0] == 0);
@@ -160,6 +162,8 @@ void OneMoreMin(void)
   {
     Min = 0;
   }
+//  uart_send("AT+CPOWD=1");   // Выключим модуль
+
   if(Min%5 == 0){
     itoa(Temp, str, 10);
   /*
@@ -177,6 +181,7 @@ void OneMoreMin(void)
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ сервера
+    
   }
 }
 //------------------------------------------------------------------------------
@@ -379,6 +384,7 @@ void SIM900_WaitRegistration(void)
 {
 uint8_t sucess_flag = 0;
   do{
+    _delay_ms(500);
     uart_send("AT+CREG?");
     while(rxb[cur_str][0] == 0);dropMessage();        // Выбрасываем эхо
     while(rxb[cur_str][0] == 0);
@@ -387,6 +393,31 @@ uint8_t sucess_flag = 0;
     while(rxb[cur_str][0] == 0);dropMessage();      // Выбрасываем "ОК"
   }while(sucess_flag == 0);
   
+}
+//----------------------------------------------------------------
+void SIM900_GetTime(void)
+{
+  uart_send("AT+CCLK?");  //   uart_send("AT+CCLK=\"18/03/04,13:6:00+12\"");
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
+  Now.yy = (uint8_t) str2int(rxb[cur_str]);
+  Now.MM = (uint8_t) str2int(rxb[cur_str]+3);
+  Now.dd = (uint8_t) str2int(rxb[cur_str]+6);
+  Now.hh = (uint8_t) str2int(rxb[cur_str]+9);
+  Now.mm = (uint8_t) str2int(rxb[cur_str]+12);
+  Now.ss = (uint8_t) str2int(rxb[cur_str]+15);
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
+}
+//----------------------------------------------------------------
+void SIM900_EnableGPRS(void)
+{
+  //    Эти настройки УЖЕ сохранены в энергонезависимой памяти модуля
+  //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitAnswer("OK", 20);uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitAnswer("OK", 20);
+  //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 20);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 20);
+  do{
+    _delay_ms(200);
+    uart_send("AT+SAPBR=1,1");
+  } while(waitAnswer("OK", 20) != 1);
 }
 //----------------------------------------------------------------
 uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0
@@ -408,4 +439,21 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
 void dropMessage(void)
 {
   rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+}
+//----------------------------------------------------------------
+int16_t str2int(const char* str)
+{
+  uint8_t minus = 1;
+  uint16_t result = 0;
+  while(*str != '\0' && (*str > '9' || *str < '0')) str ++;   // Ищем первую цифру или конец строки
+  if(*str == '\0') return 0;                                  // Если нашли конец строки, возвращаем 0
+  if(*(str-1) == '-') minus = -1;                             // Если цифру, смотрим нет ли перед ней минуса
+  result = *str - '0';
+  str ++;
+  while(*str <= '9' && *str >= '0'){
+    result  *= 10;
+    result += *str - '0';
+    str ++;
+  }
+  return result * minus;
 }

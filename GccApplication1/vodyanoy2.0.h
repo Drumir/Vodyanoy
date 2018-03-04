@@ -56,9 +56,14 @@
 #define LIGHT_ON	PORTB &= 0b11110111
 #define LIGHT_OFF PORTB |= 0b00001000
 
-struct TTime{
+struct TTime {
   uint8_t yy, MM, dd, hh, mm, ss;
 };
+
+struct TState {
+  int16_t balance;    // Количество средств на симкарте в рублях. Копейки отбрасываются
+  int16_t Temp;				// Текущая температура в помещении умноженная на 16
+}State;
 
 
 
@@ -81,8 +86,7 @@ Volts;
 uint32_t				SilentLeft;		// Сколько секунд осталось до попытки связи с сервером
 
 int16_t					TempMax,				// Температура отключения обогревателя
-TempMin,				// Температура включения обогревателя
-Temp;						// Текущая температура
+TempMin;				// Температура включения обогревателя
 
 int8_t					Mode,					  // Номер текущего режима меню
 SIM900Status;   // Cостояние связи
