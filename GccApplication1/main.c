@@ -1,25 +1,19 @@
 /*
- * Sim900_twi_lsd.c
+ * Sim900.c
  *
  * Created: 24.08.2017 22:26:28
  * Author : Drumir
  */ 
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <stdlib.h>
-#include <string.h>
-#include "global.h"
-#include "HD44780SPI.h"
-#include <util/delay.h>
-#include "uart.h"
 #include "vodyanoy2.0.h"
 
 #define RXBUFMAXSIZE 64
 #define RXBUFSTRCOUNT 4
-uint16_t char_count = 0, str_count = 0,  mode = 0;
+uint16_t char_count = 0, str_count = 0;
 volatile uint16_t cur_str = 0, TimeoutTackts = 0;
-char buf[23], str[23], rxb[RXBUFSTRCOUNT][RXBUFMAXSIZE];
+char buf[23], str[23], istr[23], rxb[RXBUFSTRCOUNT][RXBUFMAXSIZE], query[100];
+int16_t Temp;
+
 FIFO( 128 ) uart_tx_fifo;
 
 ISR(USART__RXC_vect);  //Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom32a.h (для mega32a) БЛЕАТЬ!!!
@@ -39,12 +33,16 @@ void dropMessage(void);
 
 int main(void)
 {
-  DDRC  = 0b00100000;    // 7-н, 6-18b20, 5-LCD_RESET, 4-0 - н
-  PORTC = 0b00100000;
+	ACSR |= 0x80;			// Выключим не нужный, но включеный по умолчанию аналоговый компаратор
+  DDRC  = 0b01110100;    // 7-н, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-н, 2-ТЭН, 1-н, 0-н
+  PORTC = 0b01100000;
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111100;
   DDRB  = 0b10111010;    // 7-LCD_CLK, 6-LCD_BUSY, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
   PORTB = 0b00000010;
+	DDRA =  0b00000000;			// 7-1-н, 0 - ADC Vbat
+	PORTA = 0b00000000;
+
 
   sbi(GICR, 7);          // Разрешить INT1  Для клавы
   sbi(MCUCR, 3); cbi(MCUCR, 2);  // Прерывание по переходу 1->0  на линии CLK клавы 
@@ -56,21 +54,16 @@ int main(void)
   TIMSK = 0b00010000;		// По совпадению счектчика1 и OCR1A
   
   uart_init();
-  LCD_init();
   sei();
   
   for(uint8_t i = 0; i < RXBUFSTRCOUNT; i ++)
     for(uint16_t j = 0; j < RXBUFMAXSIZE; j ++)
       rxb[i][j] = 0;
       
-  LCD_Puts("Старт");
     
   SIM900_PowerOn();   
-  LCD_Puts("Регистрация");
   SIM900_WaitRegistration();
-  LCD_Puts("ОК");
-
-  LCD_Puts("GPRS сессия");
+  
   uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
   waitAnswer("OK", 20);
   uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");
@@ -80,44 +73,76 @@ int main(void)
   uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");
   waitAnswer("OK", 20);
   do{
+    _delay_ms(2000);
     uart_send("AT+SAPBR=1,1");
   } while(waitAnswer("OK", 20) != 1);
-  LCD_Puts("ОК");
+  
+    uart_send("AT+HTTPINIT");
+    waitAnswer("OK", 20);
+    uart_send("AT+HTTPPARA=\"CID\",1");
+    waitAnswer("OK", 20);
+/*
+    strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
+    strcat(query, str);
+    strcat(query, "\"");
+    uart_send(query);
+    waitAnswer("OK", 20);
+    uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:0,200,20
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ сервера
+    
+    uart_send("AT+HTTPREAD=0,15");
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
+    while(rxb[cur_str][0] == 0); dropMessage();     // Текст
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
+*/
 
-  LCD_Puts("IP:");
+
+
+
+  /*
+  //LCD_Puts("IP:");
   uart_send("AT+SAPBR=2,1");
   while(rxb[cur_str][0] == 0); dropMessage();  // Выкинем эхо
   while(rxb[cur_str][0] == 0); 
   strncpy(str, &rxb[cur_str][13], 14); dropMessage();
-  LCD_Puts(str);
-  
-  LCD_Puts("drumir.16mb.com");
-  uart_send("AT+HTTPINIT");
+  //LCD_Puts(str);
+  */
+  /*
+  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/robot.php?action=writeTemp&temp=366\"");
   waitAnswer("OK", 20);
-  uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
-  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/merman.php\"");
-  waitAnswer("OK", 20);
-  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:0,200,20
+  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
   while(rxb[cur_str][0] == 0);
-  if(strncmp(&rxb[cur_str][0], "+HTTPACTION:0,200,", 18) == 0) 
+  */
+  /*
+  if(strncmp(&rxb[cur_str][0], "+HTTPACTION:1,200,", 18) == 0) 
     LCD_Puts("ОК");
   else {
     strncpy(str, &rxb[cur_str][14], 3);
     str[3] = '\0';
     LCD_Puts(str);
   }
-  dropMessage();
-
+  dropMessage(); // Отбросим ответ
+  */
+  /*
   uart_send("AT+HTTPREAD=0,20");
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
   while(rxb[cur_str][0] == 0);
-  LCD_Puts(&rxb[cur_str][1]);dropMessage();
+  //LCD_Puts(&rxb[cur_str][1]);
+  dropMessage();
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-
+  
+  uart_send("AT+HTTPTERM");
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
+  
+  _delay_ms(1000);
+  */
   while (1) 
     {
     while(rxb[cur_str][0] == 0);
@@ -126,6 +151,34 @@ int main(void)
     }
 }
 
+//------------------------------------------------------------------------------
+void OneMoreMin(void)
+{
+  static uint8_t Min = 0;
+  Min ++;
+  if (Min == 60)
+  {
+    Min = 0;
+  }
+  if(Min%5 == 0){
+    itoa(Temp, str, 10);
+  /*
+    uart_send("AT+HTTPINIT");
+    waitAnswer("OK", 20);
+    uart_send("AT+HTTPPARA=\"CID\",1");
+    waitAnswer("OK", 20);
+  */
+    strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
+    strcat(query, str);
+    strcat(query, "\"");
+    uart_send(query);
+    waitAnswer("OK", 20);
+    uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ сервера
+  }
+}
 //------------------------------------------------------------------------------
 ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 {
@@ -184,10 +237,27 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 //------------------------------------------------------------------------------
 ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц)
 {
+static uint16_t Tacts = 0;
+Tacts ++;
+
 if(TimeoutTackts > 0) TimeoutTackts --; 
+sei();
+if(Tacts == 580){     // Каждую 58 секунду - чтение температуры
+  Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
+//  Temp >>= 4; // 4
+//  LCD_writeStrXY(str, 90, 0);
+  return;
+}
+if(Tacts == 560){         // Каждую 56 секунду 
+  sensor_write(0x44);   // старт измерения температуры
+}
+if (Tacts == 600)
+  {
+    Tacts = 30;
+    OneMoreMin();
+  }
 }
 //----------------------------------------------------------------
- 
 ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
 {
   static uint16_t length = 0, strnum = 0;
@@ -227,8 +297,7 @@ void uart_init( void )
   //разрешить передачу, прием данных и прерывание по приёму байта
   UCSRB =  ( 1 << TXEN ) | ( 1 << RXEN ) | (1 << RXCIE );
 }
-
-
+//----------------------------------------------------------------
 ISR(USART_UDRE_vect)     // Прерывание по опустошению регистра данных
 {
   cli();
@@ -243,7 +312,7 @@ ISR(USART_UDRE_vect)     // Прерывание по опустошению регистра данных
   }
   sei();
 }
-
+//----------------------------------------------------------------
 int uart_send(char *str)
 {
   for(int i = 0; str[i] != 0; i ++)    //Помещаем строку в буфер передатчика
@@ -276,7 +345,6 @@ void incomingMessage(char* s)
   //  LCD_Puts(strnum);
   
 }
-
 //----------------------------------------------------------------
 void renewLCD(void)
 {
@@ -289,7 +357,6 @@ void renewLCD(void)
   itoa(str_count, buf, 10);
   LCD_writeString(buf);
 }
-
 //----------------------------------------------------------------
 void SIM900_PowerOn(void)
 {
@@ -307,7 +374,6 @@ void SIM900_PowerOn(void)
   while(rxb[cur_str][0] == 0);dropMessage();
   while(rxb[cur_str][0] == 0);dropMessage();
 }
-
 //----------------------------------------------------------------
 void SIM900_WaitRegistration(void)
 {
@@ -322,7 +388,7 @@ uint8_t sucess_flag = 0;
   }while(sucess_flag == 0);
   
 }
-
+//----------------------------------------------------------------
 uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0
 {
   TimeoutTackts = timeout;			// Запустим отсчёт таймаута
@@ -338,7 +404,7 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
   } 
   return 0;
 }
-
+//----------------------------------------------------------------
 void dropMessage(void)
 {
   rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;

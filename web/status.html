@@ -3,7 +3,10 @@
   <meta charset="utf-8">
   <title>Водяной 2.0</title>
   <link rel="stylesheet" type="text/css" href="style.css"/>
-  <script type="text/javascript" src="script.js"></script>
+  <script type="text/javascript" src=".\js\jquery-2.0.3.min.js"></script>  
+  <script type="text/javascript" src=".\js\globalize.min.js"></script>  
+  <script type="text/javascript" src=".\js\dx.chartjs.js"></script>
+  <script type="text/javascript" src=".\js\status.js"></script> 
 </head>
 <body> 
   <div id="caption" align="absmiddle"><h1>Водяной 2.0</h1></div> 
@@ -25,9 +28,7 @@
       <div id="warm" class="block">
         <h3>Обогреватель</h3>
         <p>выключен на протяжении 3 часов</p>
-        <div id="graph">
-          <img src="graph.png" style="height:200px">
-        </div>
+          <div id="chart"></div>
       </div>
       <div id="door" class="block">
         <h3>Дверь</h3>
