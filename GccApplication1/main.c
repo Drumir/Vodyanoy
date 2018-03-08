@@ -7,12 +7,22 @@
 
 #include "vodyanoy2.0.h"
 
-#define RXBUFMAXSIZE 64
-#define RXBUFSTRCOUNT 4
+#define RXBUFMAXSIZE 128
+#define RXBUFSTRCOUNT 6
 uint16_t char_count = 0, str_count = 0, Vbat = 0;
 volatile uint16_t cur_str = 0, TimeoutTackts = 0;
-char buf[23], str[23], istr[23], rxb[RXBUFSTRCOUNT][RXBUFMAXSIZE], query[100];
+char buf[23], str[23], istr[23], query[100];
 int16_t Temp;
+
+struct TRXB {
+  volatile char    buf[RXBUFMAXSIZE+1];     // Буфер для приёма входящих USART сообщений на всякий случай запишем после него 0
+  volatile int16_t ptrs[RXBUFSTRCOUNT];     // Массив смещений на начала принятых сообщений. смещение -1 означает, что смещение пустое
+  volatile int16_t wptr;                    // Смещение записи в buf
+  volatile int16_t startptr;                // Смещение начала текущего записываемого сообщения
+  volatile uint16_t buf_overflow_count;     // Счетчик переполнения буфера приема
+  volatile uint16_t ptrs_overflow_count;    // Счетчик переполнения ptrs
+}rx;
+
 
 FIFO( 128 ) uart_tx_fifo;
 
@@ -28,7 +38,9 @@ void SIM900_PowerOn(void);
 void SIM900_WaitRegistration(void);
 uint8_t waitAnswer(char *answer, uint16_t timeout); 
 void dropMessage(void);
-int16_t str2int(const char* str);
+int16_t str2int(char* str);
+void waitMessage(void);
+void SIM900_SendReport(void);
 
 
 
@@ -64,97 +76,42 @@ int main(void)
   uart_init();
   sei();
   
-  for(uint8_t i = 0; i < RXBUFSTRCOUNT; i ++)
-    for(uint16_t j = 0; j < RXBUFMAXSIZE; j ++)
-      rxb[i][j] = 0;
-      
+	for(uint16_t i = 0; i < RXBUFSTRCOUNT; i ++) rx.ptrs[i] = -1;   // Почистим массив указателей на начала принятых сообщений
+	rx.wptr = 0;                                           // Установим указатель записи на начало буфера
+	rx.startptr = 0;                                       // Начало записываемого сообщения
+	rx.buf_overflow_count = 0;
+	rx.ptrs_overflow_count = 0;
+	rx.buf[RXBUFMAXSIZE] = 0;                               // Запишем сразу после буфера '\0' чтобы строковые функции не сошли с ума
     
   SIM900_PowerOn();   
   SIM900_WaitRegistration();
   SIM900_EnableGPRS();
-  
-    uart_send("AT+HTTPINIT");
-    waitAnswer("OK", 20);
-    uart_send("AT+HTTPPARA=\"CID\",1");
-    waitAnswer("OK", 20);
-    
-/*
-    strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
-    strcat(query, str);
-    strcat(query, "\"");
-    uart_send(query);
-    waitAnswer("OK", 20);
-    uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:0,200,20
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ сервера
-    
-    uart_send("AT+HTTPREAD=0,15");
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
-    while(rxb[cur_str][0] == 0); dropMessage();     // Текст
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-*/
-  /*
-  //LCD_Puts("IP:");
-  uart_send("AT+SAPBR=2,1");
-  while(rxb[cur_str][0] == 0); dropMessage();  // Выкинем эхо
-  while(rxb[cur_str][0] == 0); 
-  strncpy(str, &rxb[cur_str][13], 14); dropMessage();
-  //LCD_Puts(str);
-  */
-  /*
-  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/robot.php?action=writeTemp&temp=366\"");
-  waitAnswer("OK", 20);
-  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-  while(rxb[cur_str][0] == 0);
-  */
-  /*
-  if(strncmp(&rxb[cur_str][0], "+HTTPACTION:1,200,", 18) == 0) 
-    LCD_Puts("ОК");
-  else {
-    strncpy(str, &rxb[cur_str][14], 3);
-    str[3] = '\0';
-    LCD_Puts(str);
-  }
-  dropMessage(); // Отбросим ответ
-  */
-  /*
-  uart_send("AT+HTTPREAD=0,20");
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
-  while(rxb[cur_str][0] == 0);
-  //LCD_Puts(&rxb[cur_str][1]);
-  dropMessage();
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-  
-  uart_send("AT+HTTPTERM");
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
-  
-  _delay_ms(1000);
-  */
-  
+
   uart_send("AT+CMGF=1");   // Установить текстовый формат сообщений
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим ОК
 
   uart_send("AT+CSCS=\"GSM\"");   // Установить текстовый формат сообщений
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим ОК
 
-  uart_send("AT+CUSD=1,\"*105*\"");         // Баланс на английском
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
-  while(rxb[cur_str][0] == 0);
-  State.balance = str2int(rxb[cur_str]+10);
+  uart_send("AT+CUSD=1,\"*105#\"");         // Баланс на английском
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим ответ
+  waitMessage();
+  State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
   dropMessage();     // Отбросим
+  
+  sensor_write(0x44);   // старт измерения температуры
+  ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
+  ADCSRA |= 1<<ADSC;		// Старт преобразования
+  _delay_ms(2000);
+  Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
+  SIM900_SendReport();
 
   while (1) 
     {
-    while(rxb[cur_str][0] == 0);
+    waitMessage();
     renewLCD();
     _delay_ms(200);
     }
@@ -174,34 +131,41 @@ void OneMoreMin(void)
     uart_send("AT+CPOWD=1");   // Выключим модуль
 
   if(Min%5 == 0){
-  /*
-    uart_send("AT+HTTPINIT");
-    waitAnswer("OK", 20);
-    uart_send("AT+HTTPPARA=\"CID\",1");
-    waitAnswer("OK", 20);
-  */
-        
-    itoa(Temp, str, 10);
-    strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
-    strcat(query, str);
-    strcat(query, "&vb=");
-    itoa(Vbat, str, 10);
-    strcat(query, str);
-    strcat(query, "\"");
-    uart_send(query);
-    waitAnswer("OK", 20);
-    uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ сервера
-/*    uart_send("AT+HTTPREAD=0,209");
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
-    while(rxb[cur_str][0] == 0);
-    dropMessage();
-    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
-*/    
+    SIM900_SendReport();
   }
+}
+//------------------------------------------------------------------------------
+void SIM900_SendReport(void)
+{
+  uart_send("AT+HTTPINIT");
+  waitAnswer("OK", 20);
+  uart_send("AT+HTTPPARA=\"CID\",1");
+  waitAnswer("OK", 20);
+
+  itoa(Temp, str, 10);
+  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
+  strcat(query, str);
+  strcat(query, "&vb=");
+  itoa(Vbat, str, 10);
+  strcat(query, str);
+  strcat(query, "\"");
+  uart_send(query);
+  waitAnswer("OK", 20);
+  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitMessage(); dropMessage();     // Отбросим ответ сервера
+/*    uart_send("AT+HTTPREAD=0,209");
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
+  waitMessage();
+  dropMessage();
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+*/    
+  uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок, 
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+
 }
 //------------------------------------------------------------------------------
 ISR(ADC_vect)          // Завершение преобразования АЦП
@@ -234,12 +198,12 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     //LCDPuts(&rxb[cur_str][0]);
     LCD_clear();
     uart_send("AT+HTTPREAD=0,20");
-	  while(rxb[cur_str][0] == 0);renewLCD();
-	  while(rxb[cur_str][0] == 0);renewLCD();
-	  while(rxb[cur_str][0] == 0);renewLCD();
-	  while(rxb[cur_str][0] == 0);renewLCD();
-	  while(rxb[cur_str][0] == 0);renewLCD();
-	  while(rxb[cur_str][0] == 0);renewLCD();
+	  waitMessage();renewLCD();
+	  waitMessage();renewLCD();
+	  waitMessage();renewLCD();
+	  waitMessage();renewLCD();
+	  waitMessage();renewLCD();
+	  waitMessage();renewLCD();
 
 
   }
@@ -258,8 +222,8 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 	  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/merman.php\"");
 	  waitAnswer("OK", 20);
 	  uart_send("AT+HTTPACTION=0");
-	  while(rxb[cur_str][0] == 0);renewLCD();
-	  while(rxb[cur_str][0] == 0);renewLCD();
+	  waitMessage();renewLCD();
+	  waitMessage();renewLCD();
 	  _delay_ms(2000);
 	  uart_send("AT+HTTPREAD=0,14");
   }
@@ -293,31 +257,39 @@ if (Tacts == 600)
 //----------------------------------------------------------------
 ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
 {
-  static uint16_t length = 0, strnum = 0;
-  static char rxbuf[RXBUFMAXSIZE];
-  uint8_t rxbyte;
-  rxbyte = UDR;
-  rxbuf[length] = rxbyte; 
-//  sei();
-  length ++;
-  if(length == RXBUFMAXSIZE - 2){      // Если длинна сообщения почти достигла лимита
-    rxbuf[length] = 0;          // Допишем в конец '/0' 
-    strcpy(&rxb[strnum][0], rxbuf);          // Скопируем его в основную программу
-    strnum ++; if(strnum == RXBUFSTRCOUNT) strnum = 0;
-    length = 0;
-    str_count ++;
-  }
-  if(rxbyte == CHAR_LF && length > 1 && rxbuf[length-2] == CHAR_CR){    // Если приняли подряд CHAR_CR и CHAR_LF
-    if(length == 2)          // И кроме них ничего больше нет
-      length = 0;          // избавимся от них
-    else{                  // Иначе это ценное сообщение
-      rxbuf[length] = 0;        // Допишем в конец '/0'
-      strcpy(&rxb[strnum][0], rxbuf);          // Скопируем его в основную программу
-      strnum ++; if(strnum == RXBUFSTRCOUNT) strnum = 0;
-      length = 0;
-      str_count ++;
-    }
-  }
+	int16_t nextwptr, prevwptr, i;
+	if(rx.wptr == rx.startptr && rx.ptrs[0] == -1){   // Если это первый байт новой строки и нет необработаных строк
+  	rx.wptr = 0;
+  	rx.startptr = 0;    // Запишем эту строку в самое начало буфера
+	}
+	rx.buf[rx.wptr] = UDR;
+	nextwptr = rx.wptr + 1;
+	prevwptr = rx.wptr - 1;
+	if(rx.buf[rx.wptr] == CHAR_LF && rx.wptr > 0 && rx.buf[prevwptr] == CHAR_CR){  // Если приняли подряд CHAR_CR и CHAR_LF
+  	rx.buf[prevwptr] = '\0';                                      // Допишем нуль-терминатор (потеряв(отбросив) CHAR_CR и CHAR_LF
+  	if(prevwptr != rx.startptr){                                  // Если это нормальная, полноразмерная строка(состоит не только из CR LF)
+    	i = 0;
+    	while(rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT) i ++;    // Найдем в rx.ptrs первую незанятую ячейку
+    	if(i == RXBUFSTRCOUNT) { // Ужас-ужас - кончилось место под смещения строк (rx.ptrs)
+      	rx.ptrs_overflow_count ++;
+      	i = RXBUFSTRCOUNT-1;      // Перезапишем последнее сообщение
+      	//return; 								// Или просто потеряем его (последнее сообщение)
+    	}
+    	rx.ptrs[i] = rx.startptr;   // Впишем в rx.ptrs смещение свеже принятой строки
+    	rx.startptr = rx.wptr;      // Запомним где начнется след сообщение
+  	}
+  	else {    // Пустая строка CR+LF
+    	rx.wptr = prevwptr;
+  	}
+	}
+	else {      // Просто еще один символ запишем в буфер
+  	if(nextwptr == RXBUFMAXSIZE){ // Ужас-ужас - буфер закончился
+    	rx.buf_overflow_count ++;   // Никакого ужаса. Мы просто не инкрементируем rx.wptr, и перезаписи не произойдет.
+    	rx.buf[prevwptr] = CHAR_CR; // Когда придет CHAR_LF, функция сможет закончить эту строку
+  	}
+  	else
+  	rx.wptr = nextwptr;
+	}
 }
 //----------------------------------------------------------------
 void uart_init( void )
@@ -381,14 +353,6 @@ void incomingMessage(char* s)
 //----------------------------------------------------------------
 void renewLCD(void)
 {
-  if(rxb[cur_str][0] != 0) {
-    LCD_Puts(&rxb[cur_str][0]);
-    rxb[cur_str][0] = 0;
-    cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
-  }
-  LCD_gotoXY(8, 0);
-  itoa(str_count, buf, 10);
-  LCD_writeString(buf);
 }
 //----------------------------------------------------------------
 void SIM900_PowerOn(void)
@@ -404,8 +368,8 @@ void SIM900_PowerOn(void)
   sbi(PORTB, 1);      // Отпускаем PWRKEY
   while((PINB & 0b00000001) == 0)_delay_ms(50);    // Ждем 1 на STATUS
   uart_send("AT");
-  while(rxb[cur_str][0] == 0);dropMessage();
-  while(rxb[cur_str][0] == 0);dropMessage();
+  waitMessage();dropMessage();
+  waitMessage();dropMessage();
 }
 //----------------------------------------------------------------
 void SIM900_WaitRegistration(void)
@@ -414,11 +378,11 @@ uint8_t sucess_flag = 0;
   do{
     _delay_ms(500);
     uart_send("AT+CREG?");
-    while(rxb[cur_str][0] == 0);dropMessage();        // Выбрасываем эхо
-    while(rxb[cur_str][0] == 0);
-    if(strncmp(&rxb[cur_str][0], "+CREG: 0,1", 10) == 0) sucess_flag = 1; // Анализируем ответ
+    waitMessage();dropMessage();        // Выбрасываем эхо
+    waitMessage();
+    if(strncmp((char*)rx.buf+rx.ptrs[0], "+CREG: 0,1", 10) == 0) sucess_flag = 1; // Анализируем ответ
     dropMessage();  
-    while(rxb[cur_str][0] == 0);dropMessage();      // Выбрасываем "ОК"
+    waitMessage();dropMessage();      // Выбрасываем "ОК"
   }while(sucess_flag == 0);
   
 }
@@ -426,15 +390,15 @@ uint8_t sucess_flag = 0;
 void SIM900_GetTime(void)
 {
   uart_send("AT+CCLK?");  //   uart_send("AT+CCLK=\"18/03/04,13:6:00+12\"");
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
-  Now.yy = (uint8_t) str2int(rxb[cur_str]);
-  Now.MM = (uint8_t) str2int(rxb[cur_str]+3);
-  Now.dd = (uint8_t) str2int(rxb[cur_str]+6);
-  Now.hh = (uint8_t) str2int(rxb[cur_str]+9);
-  Now.mm = (uint8_t) str2int(rxb[cur_str]+12);
-  Now.ss = (uint8_t) str2int(rxb[cur_str]+15);
-  while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим ответ
+  Now.yy = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]);
+  Now.MM = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+3);
+  Now.dd = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+6);
+  Now.hh = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+9);
+  Now.mm = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+12);
+  Now.ss = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+15);
+  waitMessage(); dropMessage();     // Отбросим ОК
 }
 //----------------------------------------------------------------
 void SIM900_EnableGPRS(void)
@@ -443,7 +407,7 @@ void SIM900_EnableGPRS(void)
   //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitAnswer("OK", 20);uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitAnswer("OK", 20);
   //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 20);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 20);
   do{
-    _delay_ms(200);
+    _delay_ms(500);
     uart_send("AT+SAPBR=1,1");
   } while(waitAnswer("OK", 20) != 1);
 }
@@ -452,10 +416,10 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
 {
   TimeoutTackts = timeout;			// Запустим отсчёт таймаута
   while(1){
-    while(rxb[cur_str][0] == 0 && TimeoutTackts != 0);
+    while(rx.ptrs[0] == -1 && TimeoutTackts != 0);
     if(TimeoutTackts == 0)                                          // Если вышли из цикла по таймауту, возвращаем 0 
       return 0;
-    if(strncmp(&rxb[cur_str][0], answer, strlen(answer)) == 0){     // Если получен нужный ответ, возвращаем 1
+    if(strncmp((char*)rx.buf+rx.ptrs[0], answer, strlen(answer)) == 0){     // Если получен нужный ответ, возвращаем 1
       dropMessage();
       return 1;                                                
     }
@@ -464,12 +428,20 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
   return 0;
 }
 //----------------------------------------------------------------
-void dropMessage(void)
+void waitMessage(void)
 {
-  rxb[cur_str][0] = 0; cur_str ++; if(cur_str == RXBUFSTRCOUNT) cur_str = 0;
+  while(rx.ptrs[0] == -1);
 }
 //----------------------------------------------------------------
-int16_t str2int(const char* str)
+void dropMessage(void)
+{
+	uint8_t i;
+	for (i = 0; i < RXBUFSTRCOUNT-1 && rx.ptrs[i] != -1; i ++)
+	rx.ptrs[i] = rx.ptrs[i+1];
+	rx.ptrs[RXBUFSTRCOUNT-1] = -1;
+}
+//----------------------------------------------------------------
+int16_t str2int(char* str)
 {
   uint8_t minus = 1;
   uint16_t result = 0;
