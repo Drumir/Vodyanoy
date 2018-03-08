@@ -29,7 +29,9 @@
 
   if($act == "wT") {
     $temp = stripslashes($_GET['t']); 
-    $query = "INSERT INTO `temps` (tt) VALUES (" . $temp . ")";    
+    $Vbat = stripslashes($_GET['vb']); 
+    $query = "INSERT INTO `temps` (`tt`, `Vbat`) VALUES (" . $temp . "," . $Vbat . ")";    
+//    $query = "INSERT INTO `tt_ds` (`tt`, `host`) VALUES (" . $tihd . "," . $hikd . ")";
     $result = mysqli_query ($link, $query);
     if(!$result){
       $answer["status"] = "fail";

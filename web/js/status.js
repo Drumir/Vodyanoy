@@ -3,7 +3,8 @@
 |  Copyright (c) 2018 drumir@mail.ru
 |  All rights reserved.
 +-----------------------------------------------------------------------------*/
-var sqlServerAdress = "http://drumir.16mb.com/k/user.php";
+var sqlServerAdress = "http://drumir.16mb.com/k/user.php";    
+var lastLinkTime;
 
 window.onload = function() {          //
 
@@ -32,17 +33,29 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
   if(data.status == "success"){   
   var newData = [];    
   var i = 0;
-  if(data.result.length > 120) i = data.result.length - 120;
+  if(data.result.length > 144) i = data.result.length - 144;
   for(; i < data.result.length; i ++){
     var a = {};
     var b = new Date(data.result[i].time);
     b = b.getTime() + 10459000;
     a.time = new Date(b);  
 //    a.time += a.time.getTime() + 3240120;
-    a.tt = Number(data.result[i].tt)/16;    
+    a.tt = Number(data.result[i].tt)/16;
+    if(data.result[i].Vbat != "0")
+      a.Vbat = Number(data.result[i].Vbat)/200;   
     newData.push(a);
     
-  }  /*   
+  } 
+    Duration = (new Date().getTime() - a.time.getTime()) / 1000;
+    var ending = " минут ";
+    if(Duration > 60*60*24*30*2){ Duration /= 60*60*24*30; ending = " месяцев ";}
+    if(Duration > 60*60*24*2){ Duration /= 60*60*24; ending = " дней ";}
+    if(Duration > 60*60*3){ Duration /= 60*60; ending = " часов ";}
+    else Duration /= 60;   
+    Duration = Math.round(Duration); 
+    document.getElementById("lastConnection").innerText = "Последнее обновление: " + Duration + ending + "назад";
+  
+     /*   
   for(i = 0; i < data.result.length; i ++){
     data.result[i].time = new Date(data.result[i].time); 
     data.result[i].tt = Number(data.result[i].tt)/16;    
@@ -50,7 +63,6 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
   
     $('#chart').dxChart({
       dataSource: newData,  
-//      dataSource: data.result,  
       zoomingMode: "mouse",
       
       
@@ -65,8 +77,42 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
       },    
       
       series: [
-        { valueField: "tt", name: "Температура" },
+        { valueField: "tt", 
+          name: "Температура", 
+          type: "spline", 
+          axis: "температура",
+        },
+        { valueField: "Vbat", 
+          name: "Аккумулятор", 
+          type: "spline", 
+          axis: "напряжение",
+        },
       ],    
+      valueAxis: [{
+          name: "температура",
+          position: "left",  
+          label: {
+            customizeText: function () {
+            return this.valueText + '&#176C';
+            }
+          }
+
+//          showZero: true,
+//          tickInterval: 1,
+      }, 
+      {
+          name: "напряжение",
+          position: "right",
+          min: 3,
+          max: 4.3,
+          tickInterval: 0.1,   
+          maxValueMargin: 0.1,
+          label: {
+            customizeText: function () {
+            return this.valueText + ' В';
+            }
+          }
+      }],
       
       argumentAxis:{
           grid:{
@@ -95,3 +141,4 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
 
 function cb16mbError(){
 }
+

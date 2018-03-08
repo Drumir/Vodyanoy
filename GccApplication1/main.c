@@ -9,7 +9,7 @@
 
 #define RXBUFMAXSIZE 64
 #define RXBUFSTRCOUNT 4
-uint16_t char_count = 0, str_count = 0;
+uint16_t char_count = 0, str_count = 0, Vbat = 0;
 volatile uint16_t cur_str = 0, TimeoutTackts = 0;
 char buf[23], str[23], istr[23], rxb[RXBUFSTRCOUNT][RXBUFMAXSIZE], query[100];
 int16_t Temp;
@@ -20,7 +20,7 @@ ISR(USART__RXC_vect);  //Имена прерываний определены в c:\Program Files\Atmel\AV
 ISR(USART__UDRE_vect);
 ISR(INT1_vect);         //CLK от клавы
 ISR(TIMER1__COMPA_vect); //обработка совпадения счетчика1. Частота 10Гц.  Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom8a.h (для mega8a)
-
+ISR(ADC_vect);          // Завершение преобразования АЦП
 
 void incomingMessage(char* s);
 void renewLCD(void);
@@ -54,6 +54,12 @@ int main(void)
   TCCR1B =  0b00001100;	// Делитель для таймера1 - 100 - 256
   OCR1A = 3125;			// Считать до 3125	Прерывание будет генерироваться с частотой 10 Гц
   TIMSK = 0b00010000;		// По совпадению счектчика1 и OCR1A
+
+          	/* Инициализация АЦП */
+	ADCSRA = 0b10011111;		// 1 - вкл, 0 - еще не старт, 0 - однократно, 0 - прерывания генерировать, 0 - прерывания АЦП разрешить, 111 - предделитель частоты 128
+	ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
+	ADCSRA |= 1<<ADSC;		// Старт пробного мусорного преобразования  
+
   
   uart_init();
   sei();
@@ -130,6 +136,7 @@ int main(void)
   
   _delay_ms(1000);
   */
+  
   uart_send("AT+CMGF=1");   // Установить текстовый формат сообщений
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
@@ -138,7 +145,7 @@ int main(void)
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ОК
 
-  uart_send("ATD*105#;");         // Баланс на английском
+  uart_send("AT+CUSD=1,\"*105*\"");         // Баланс на английском
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
   while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ
   while(rxb[cur_str][0] == 0);
@@ -162,17 +169,23 @@ void OneMoreMin(void)
   {
     Min = 0;
   }
-//  uart_send("AT+CPOWD=1");   // Выключим модуль
+
+  if(Vbat < 700)    // 3.5V
+    uart_send("AT+CPOWD=1");   // Выключим модуль
 
   if(Min%5 == 0){
-    itoa(Temp, str, 10);
   /*
     uart_send("AT+HTTPINIT");
     waitAnswer("OK", 20);
     uart_send("AT+HTTPPARA=\"CID\",1");
     waitAnswer("OK", 20);
   */
+        
+    itoa(Temp, str, 10);
     strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
+    strcat(query, str);
+    strcat(query, "&vb=");
+    itoa(Vbat, str, 10);
     strcat(query, str);
     strcat(query, "\"");
     uart_send(query);
@@ -181,10 +194,22 @@ void OneMoreMin(void)
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
     while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим ответ сервера
-    
+/*    uart_send("AT+HTTPREAD=0,209");
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим эхо
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "+HTTPREAD:22"
+    while(rxb[cur_str][0] == 0);
+    dropMessage();
+    while(rxb[cur_str][0] == 0); dropMessage();     // Отбросим "ОК"
+*/    
   }
 }
 //------------------------------------------------------------------------------
+ISR(ADC_vect)          // Завершение преобразования АЦП
+{
+  	Vbat = ADC;		// Преобразуем условные единицы в вольты
+}
+//------------------------------------------------------------------------------
+
 ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 {
   sei();
@@ -251,6 +276,9 @@ if(Tacts == 580){     // Каждую 58 секунду - чтение температуры
   Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
 //  Temp >>= 4; // 4
 //  LCD_writeStrXY(str, 90, 0);
+  ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
+  ADCSRA |= 1<<ADSC;		// Старт преобразования
+
   return;
 }
 if(Tacts == 560){         // Каждую 56 секунду 
