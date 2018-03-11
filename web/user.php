@@ -26,6 +26,22 @@
     }
   }
 
+  if($act == "getStats"){
+    $query = "SELECT * FROM `stats` WHERE id = 1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+    $result = mysqli_query($link, $query);
+    if(!$result){
+      $answer["status"] = "fail";
+      $answer["result"][0] = mysqli_error($link); 
+    }                
+    else {
+      $answer["status"] = "success";
+      $i = 0;
+      while($row = mysqli_fetch_object($result)){
+        $answer["result"][$i] = $row;                       
+        $i ++;    
+      }
+    }
+  }
   if($act == "readChart"){
 //    $query = "SELECT * FROM `temps` WHERE time > 0";    // Подумать об экранировании с помощью mysqli_real_escape_string()
     $query = "SELECT * FROM `temps`";    // Подумать об экранировании с помощью mysqli_real_escape_string()

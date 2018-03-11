@@ -30,8 +30,11 @@
   if($act == "wT") {
     $temp = stripslashes($_GET['t']); 
     $Vbat = stripslashes($_GET['vb']); 
+    $balance = stripslashes($_GET['b']); 
     $query = "INSERT INTO `temps` (`tt`, `Vbat`) VALUES (" . $temp . "," . $Vbat . ")";    
-//    $query = "INSERT INTO `tt_ds` (`tt`, `host`) VALUES (" . $tihd . "," . $hikd . ")";
+    $result1 = mysqli_query ($link, $query);
+
+    $query = "UPDATE stats SET balance=".$balance.", Vbat=".$Vbat." WHERE id = 1";
     $result = mysqli_query ($link, $query);
     if(!$result){
       $answer["status"] = "fail";

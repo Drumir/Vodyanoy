@@ -9,10 +9,9 @@
 
 #define RXBUFMAXSIZE 128
 #define RXBUFSTRCOUNT 6
-uint16_t char_count = 0, str_count = 0, Vbat = 0;
+uint16_t char_count = 0, str_count = 0;
 volatile uint16_t cur_str = 0, TimeoutTackts = 0;
 char buf[23], str[23], istr[23], query[100];
-int16_t Temp;
 
 struct TRXB {
   volatile char    buf[RXBUFMAXSIZE+1];     // Буфер для приёма входящих USART сообщений на всякий случай запишем после него 0
@@ -41,6 +40,7 @@ void dropMessage(void);
 int16_t str2int(char* str);
 void waitMessage(void);
 void SIM900_SendReport(void);
+void SIM900_GetBalance(void);
 
 
 
@@ -52,7 +52,8 @@ int main(void)
   PORTC = 0b01100000;
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111100;
-  DDRB  = 0b10111010;    // 7-LCD_CLK, 6-LCD_BUSY, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
+//  DDRB  = 0b10111010;    // 7-LCD_CLK, 6-LCD_BUSY, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
+  DDRB  = 0b00001010;    // 7-4 - н, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
   PORTB = 0b00000010;
 	DDRA =  0b00000000;			// 7-1-н, 0 - ADC Vbat
 	PORTA = 0b00000000;
@@ -85,8 +86,9 @@ int main(void)
     
   SIM900_PowerOn();   
   SIM900_WaitRegistration();
+  SIM900_GetBalance();
   SIM900_EnableGPRS();
-
+/*
   uart_send("AT+CMGF=1");   // Установить текстовый формат сообщений
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим ОК
@@ -94,25 +96,20 @@ int main(void)
   uart_send("AT+CSCS=\"GSM\"");   // Установить текстовый формат сообщений
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим ОК
-
-  uart_send("AT+CUSD=1,\"*105#\"");         // Баланс на английском
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим ответ
-  waitMessage();
-  State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
-  dropMessage();     // Отбросим
+*/
   
   sensor_write(0x44);   // старт измерения температуры
   ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
   ADCSRA |= 1<<ADSC;		// Старт преобразования
   _delay_ms(2000);
-  Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
+  State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
   SIM900_SendReport();
 
   while (1) 
     {
     waitMessage();
     renewLCD();
+    dropMessage();
     _delay_ms(200);
     }
 }
@@ -125,9 +122,10 @@ void OneMoreMin(void)
   if (Min == 60)
   {
     Min = 0;
+    SIM900_GetBalance();
   }
 
-  if(Vbat < 700)    // 3.5V
+  if(State.Vbat < 660)    // 3.3V
     uart_send("AT+CPOWD=1");   // Выключим модуль
 
   if(Min%5 == 0){
@@ -142,11 +140,14 @@ void SIM900_SendReport(void)
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
 
-  itoa(Temp, str, 10);
+  itoa(State.Temp, str, 10);
   strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
   strcat(query, str);
   strcat(query, "&vb=");
-  itoa(Vbat, str, 10);
+  itoa(State.Vbat, str, 10);
+  strcat(query, str);
+  strcat(query, "&b=");
+  itoa(State.balance, str, 10);
   strcat(query, str);
   strcat(query, "\"");
   uart_send(query);
@@ -154,14 +155,16 @@ void SIM900_SendReport(void)
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
-  waitMessage(); dropMessage();     // Отбросим ответ сервера
-/*    uart_send("AT+HTTPREAD=0,209");
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
-  waitMessage();
-  dropMessage();
-  waitMessage(); dropMessage();     // Отбросим "ОК"
-*/    
+  waitMessage(); 
+  if(str2int((char*)rx.buf+rx.ptrs[0]+18) > 32){
+    dropMessage();     // Отбросим ответ сервера
+    uart_send("AT+HTTPREAD=0,128");
+    waitMessage(); dropMessage();     // Отбросим эхо
+    waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
+    waitMessage(); dropMessage();     // Отбросим прочитанное
+    waitMessage(); dropMessage();     // Отбросим "ОК"
+  }
+  dropMessage();    
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок, 
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -170,7 +173,7 @@ void SIM900_SendReport(void)
 //------------------------------------------------------------------------------
 ISR(ADC_vect)          // Завершение преобразования АЦП
 {
-  	Vbat = ADC;		// Преобразуем условные единицы в вольты
+  	State.Vbat = ADC;		// Преобразуем условные единицы в вольты
 }
 //------------------------------------------------------------------------------
 
@@ -237,7 +240,7 @@ Tacts ++;
 if(TimeoutTackts > 0) TimeoutTackts --; 
 sei();
 if(Tacts == 580){     // Каждую 58 секунду - чтение температуры
-  Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
+  State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
 //  Temp >>= 4; // 4
 //  LCD_writeStrXY(str, 90, 0);
   ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
@@ -410,6 +413,17 @@ void SIM900_EnableGPRS(void)
     _delay_ms(500);
     uart_send("AT+SAPBR=1,1");
   } while(waitAnswer("OK", 20) != 1);
+}
+//----------------------------------------------------------------
+void SIM900_GetBalance(void)
+{
+  //  uart_send("AT+CUSD=1,\"*120#\"");         // Баланс на английском   AT+CUSD=1,"*120$23"$0d
+  uart_send("AT+CUSD=1,\"*105*5#\"");         // Запрос баланса  AT+CUSD=1,"*105*5$23"$0d
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим ОК
+  waitMessage();
+  State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
+  dropMessage();     // Отбросим
 }
 //----------------------------------------------------------------
 uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0

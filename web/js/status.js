@@ -10,42 +10,68 @@ window.onload = function() {          //
 
 //  document.getElementById('saveSettings').onclick = onBtnSaveClick;  
   
-  ReadStatusFromServer(); 
+  GetStats();
+  ReadChartFromServer();  
   setInterval(oneMoreMinute, 60000); 
-}  
+} 
 
 function oneMoreMinute(){
-  ReadStatusFromServer();  
+  GetStats();
+  ReadChartFromServer();  
 }
 
-function ReadStatusFromServer(){
+function ReadChartFromServer(){
   $.ajax({
     url: sqlServerAdress,
     type: 'post',
     dataType: 'json',
     data:  {action:"readChart"},
-    success: cbSqlReadStatusSuccess,
+    success: cbSqlReadChartSuccess,
+    error: cb16mbError
+  });
+}  
+
+function GetStats(){
+  $.ajax({
+    url: sqlServerAdress,
+    type: 'post',
+    dataType: 'json',
+    data:  {action:"getStats"},
+    success: cbSqlGetStatsSuccess,
     error: cb16mbError
   });
 }
 
-function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем настройки с сервера
+function cbSqlGetStatsSuccess(data, textStatus) {      // Прочитаем настройки с сервера
   if(data.status == "success"){   
-  var newData = [];    
-  var i = 0;
-  if(data.result.length > 144) i = data.result.length - 144;
-  for(; i < data.result.length; i ++){
-    var a = {};
-    var b = new Date(data.result[i].time);
-    b = b.getTime() + 10459000;
-    a.time = new Date(b);  
-//    a.time += a.time.getTime() + 3240120;
-    a.tt = Number(data.result[i].tt)/16;
-    if(data.result[i].Vbat != "0")
-      a.Vbat = Number(data.result[i].Vbat)/200;   
-    newData.push(a);
     
-  } 
+    document.getElementById("p_balance").innerText = data.result[0].balance + " руб.";
+     /*   
+  for(i = 0; i < data.result.length; i ++){
+    data.result[i].time = new Date(data.result[i].time); 
+    data.result[i].tt = Number(data.result[i].tt)/16;    
+  }  */ 
+  
+  }  
+}
+
+function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем настройки с сервера
+  if(data.status == "success"){   
+    var newData = [];    
+    var i = 0;
+    if(data.result.length > 144) i = data.result.length - 144;
+    for(; i < data.result.length; i ++){
+      var a = {};
+      var b = new Date(data.result[i].time);
+      b = b.getTime() + 10459000;
+      a.time = new Date(b);  
+  //    a.time += a.time.getTime() + 3240120;
+      a.tt = Number(data.result[i].tt)/16;
+      if(data.result[i].Vbat != "0")
+        a.Vbat = Number(data.result[i].Vbat)/200;   
+      newData.push(a);
+      
+    } 
     Duration = (new Date().getTime() - a.time.getTime()) / 1000;
     var ending = " минут ";
     if(Duration > 60*60*24*30*2){ Duration /= 60*60*24*30; ending = " месяцев ";}
@@ -66,22 +92,19 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
       zoomingMode: "mouse",
       
       
-      commonSeriesSettings: {
+      commonSeriesSettings: {  
+          point: {
+            size: 3
+          },
           type: "line",
           argumentField: "time",
-          line: {
-              point: {
-                  visible: true
-              }
-          }
       },    
-      
       series: [
         { valueField: "tt", 
           name: "Температура", 
           type: "spline", 
-          axis: "температура",
-        },
+          axis: "температура", 
+        },  
         { valueField: "Vbat", 
           name: "Аккумулятор", 
           type: "spline", 
@@ -91,6 +114,7 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
       valueAxis: [{
           name: "температура",
           position: "left",  
+//          tickInterval: 1,
           label: {
             customizeText: function () {
             return this.valueText + '&#176C';
@@ -98,14 +122,13 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
           }
 
 //          showZero: true,
-//          tickInterval: 1,
       }, 
       {
           name: "напряжение",
           position: "right",
           min: 3,
           max: 4.3,
-          tickInterval: 0.1,   
+//          tickInterval: 0.1,   
           maxValueMargin: 0.1,
           label: {
             customizeText: function () {
@@ -117,7 +140,11 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
       argumentAxis:{
           grid:{
               visible: true
-          }
+          },
+//          label: {
+//            format: "shortDate"
+//          }
+
       },
       tooltip:{
           enabled: true
@@ -140,5 +167,6 @@ function cbSqlReadStatusSuccess(data, textStatus) {      // Прочитаем �
 }
 
 function cb16mbError(){
+  document.getElementById("lastConnection").innerText = "cb16mbError"  
 }
 
