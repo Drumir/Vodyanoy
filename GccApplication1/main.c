@@ -73,30 +73,25 @@ int main(void)
 	ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
 	ADCSRA |= 1<<ADSC;		// Старт пробного мусорного преобразования  
 
-  
-  uart_init();
-  sei();
-  
 	for(uint16_t i = 0; i < RXBUFSTRCOUNT; i ++) rx.ptrs[i] = -1;   // Почистим массив указателей на начала принятых сообщений
 	rx.wptr = 0;                                           // Установим указатель записи на начало буфера
 	rx.startptr = 0;                                       // Начало записываемого сообщения
 	rx.buf_overflow_count = 0;
 	rx.ptrs_overflow_count = 0;
 	rx.buf[RXBUFMAXSIZE] = 0;                               // Запишем сразу после буфера '\0' чтобы строковые функции не сошли с ума
+  
+  SIM900Status = SIM900_DOWN;
+
     
+  uart_init();
+  sei();
+  uart_send("MAIN");
+
+
   SIM900_PowerOn();   
   SIM900_WaitRegistration();
   SIM900_GetBalance();
   SIM900_EnableGPRS();
-/*
-  uart_send("AT+CMGF=1");   // Установить текстовый формат сообщений
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим ОК
-
-  uart_send("AT+CSCS=\"GSM\"");   // Установить текстовый формат сообщений
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим ОК
-*/
   
   sensor_write(0x44);   // старт измерения температуры
   ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
@@ -125,11 +120,11 @@ void OneMoreMin(void)
     SIM900_GetBalance();
   }
 
-  if(State.Vbat < 660)    // 3.3V
-    uart_send("AT+CPOWD=1");   // Выключим модуль
-
   if(Min%5 == 0){
     SIM900_SendReport();
+
+  if(State.Vbat < 660)    // 3.3V
+    uart_send("AT+CPOWD=1");   // Выключим модуль
   }
 }
 //------------------------------------------------------------------------------
@@ -180,11 +175,14 @@ ISR(ADC_vect)          // Завершение преобразования АЦП
 ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 {
   sei();
+  uart_send("INT1_vect");
   //char str[20];
   unsigned char bstat;  
   bstat = PIND & 0b01111000;
   if (bstat == 0b01010000)       // Кнопка вниз 
   {
+    PORTC &= 0b11101111;  //Выключить насос
+    /*
     cbi(PORTB, 1);
     _delay_ms(1500);
     sbi(PORTB, 1);
@@ -192,43 +190,18 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     while((PINB & 0b00000001) == 1)_delay_ms(10);      // Ждем 0 на STATUS
     LCD_Puts("*PowerDown*");
     cbi(PORTD, 7);      // Disable 4.0v
+    */
   }
   if (bstat == 0b01100000)       // Кнопка вверх
   {
+    PORTC |= 0b00010000;  //Выключить насос
   }
   if (bstat == 0b00110000)       // Кнопка влево
   {
-    //LCDPuts(&rxb[cur_str][0]);
-    LCD_clear();
-    uart_send("AT+HTTPREAD=0,20");
-	  waitMessage();renewLCD();
-	  waitMessage();renewLCD();
-	  waitMessage();renewLCD();
-	  waitMessage();renewLCD();
-	  waitMessage();renewLCD();
-	  waitMessage();renewLCD();
-
-
   }
   
   if (bstat == 0b01110000)      // Кнопка вправо
-  {   
-    uart_send("AT+SAPBR=1,1");
-    _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
-    uart_send("AT+SAPBR=2,1");
-    _delay_ms(100);renewLCD();_delay_ms(100);renewLCD();_delay_ms(2000);
-
-	  uart_send("AT+HTTPINIT");
-	  waitAnswer("OK", 20);
-	  uart_send("AT+HTTPPARA=\"CID\",1");
-	  waitAnswer("OK", 20);
-	  uart_send("AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/merman.php\"");
-	  waitAnswer("OK", 20);
-	  uart_send("AT+HTTPACTION=0");
-	  waitMessage();renewLCD();
-	  waitMessage();renewLCD();
-	  _delay_ms(2000);
-	  uart_send("AT+HTTPREAD=0,14");
+  {  
   }
 }
 //------------------------------------------------------------------------------
@@ -363,8 +336,10 @@ void SIM900_PowerOn(void)
   sbi(PORTD, 7);      // Enable 4.0v 
   _delay_ms(200);
   
-  if((PINB & 0b00000001) != 0)   // Модуль уже включен
+  if((PINB & 0b00000001) != 0){   // Модуль уже включен
+    SIM900Status = SIM900_UP;
     return;
+  }  
      
   cbi(PORTB, 1);      // Тянем PWRKEY вниз
   _delay_ms(1500);
@@ -373,6 +348,7 @@ void SIM900_PowerOn(void)
   uart_send("AT");
   waitMessage();dropMessage();
   waitMessage();dropMessage();
+  SIM900Status = SIM900_UP;
 }
 //----------------------------------------------------------------
 void SIM900_WaitRegistration(void)

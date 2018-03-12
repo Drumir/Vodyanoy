@@ -114,6 +114,7 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем н
       valueAxis: [{
           name: "температура",
           position: "left",  
+          showZero: true,
 //          tickInterval: 1,
           label: {
             customizeText: function () {
@@ -121,15 +122,14 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем н
             }
           }
 
-//          showZero: true,
       }, 
       {
           name: "напряжение",
           position: "right",
-          min: 3,
-          max: 4.3,
+          min: 3.2,
+          max: 4.1,
 //          tickInterval: 0.1,   
-          maxValueMargin: 0.1,
+//          maxValueMargin: 0.1,
           label: {
             customizeText: function () {
             return this.valueText + ' В';
