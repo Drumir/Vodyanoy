@@ -144,6 +144,9 @@
     <Compile Include="global.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="SIM900.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="SPI2TWI.c">
       <SubType>compile</SubType>
     </Compile>

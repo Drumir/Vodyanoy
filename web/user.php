@@ -44,7 +44,7 @@
   }
   if($act == "readChart"){
 //    $query = "SELECT * FROM `temps` WHERE time > 0";    // Подумать об экранировании с помощью mysqli_real_escape_string()
-    $query = "SELECT * FROM `temps`";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+    $query = "SELECT * FROM `temps` ORDER BY `id` DESC LIMIT 144";    // Подумать об экранировании с помощью mysqli_real_escape_string()
     $result = mysqli_query($link, $query);
     if(!$result){
       $answer["status"] = "fail";

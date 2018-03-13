@@ -72,7 +72,7 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем н
       newData.push(a);
       
     } 
-    Duration = (new Date().getTime() - a.time.getTime()) / 1000;
+    Duration = (new Date().getTime() - newData[0].time.getTime()) / 1000;
     var ending = " минут ";
     if(Duration > 60*60*24*30*2){ Duration /= 60*60*24*30; ending = " месяцев ";}
     if(Duration > 60*60*24*2){ Duration /= 60*60*24; ending = " дней ";}
