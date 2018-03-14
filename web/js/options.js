@@ -184,6 +184,17 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
   params.operator_number = document.getElementById('OperatorTel').value;
   params.admin_number = document.getElementById('AdminTel').value;  
   
+  var ts = new Date();     
+
+  var str = "" + (ts.getFullYear()-2000);
+  if(ts.getMonth()+1 < 10) {str += "0";} str += (ts.getMonth()+1); 
+  if(ts.getDate() < 10) {str += "0";} str += (ts.getDate()); 
+  if(ts.getHours() < 10) {str += "0";} str += (ts.getHours()); 
+  if(ts.getMinutes() < 10) {str += "0";} str += (ts.getMinutes()); 
+  if(ts.getSeconds() < 10) {str += "0";} str += (ts.getSeconds()); 
+  
+  params.timestamp = str;
+  
   params.action = "writeSettings";
   
   $.ajax({

@@ -54,6 +54,10 @@ int main(void)
 	Seconds = 0;
 	CheckUPause = 0;
 	SilentLeft = FIRST_CONNECT_DELAY;
+  
+  Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
+  localSettingsTimestamp.yy = 0;
+  remoteSettingsTimestamp.yy = 0;
 
 	PumpRelaxDuration =   (uint16_t)eeprom_read_word((uint16_t *)0x0000); // Прочитаем из ПЗУ
 	PumpWorkDuration =    (uint16_t)eeprom_read_word((uint16_t *)0x0002);
@@ -94,10 +98,30 @@ int main(void)
   {
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
-       SilentLeft = 300;    // Следующий сеанс связи через 5 минут
-       SIM900_PrepareConnection();
-       SIM900_SendReport(); 
-    }
+      SilentLeft = 300;    // Следующий сеанс связи через 5 минут
+      SIM900_PrepareConnection();
+      if(SIM900Status >= SIM900_UP){
+        if (Now.yy == 0){
+          SIM900_GetTime();              // Перед сеансом связи актуализируем время.
+          RecToHistory(EVENT_START);     // Если сеанс первый - впишем в историю событие старта
+        }         
+        else SIM900_GetTime();              
+      }         
+      if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
+      {
+        SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
+        if(timeCompare(&localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
+        {
+          SIM900_SendSettings();                                                  // Отошлем их на сервер
+        } 
+        else if (timeCompare(&localSettingsTimestamp, &remoteSettingsTimestamp) < 0) // Если настройки на сервере новее
+        {
+          SIM900_GetSettings();                                                       // Скачаем и примем их
+        }
+        SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
+        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
+      }
+    }    
   }
 }
 
@@ -126,6 +150,16 @@ void OneMoreSec(void)
   uint16_t a;
   sei();
   Seconds ++;
+  Now.ss ++; 
+  if (Now.ss == 60)
+  {
+    Now.ss = 0; Now.mm ++;
+    if(Now.mm == 60)
+    {
+      Now.mm = 0;Now.hh ++;
+      if(Now.hh == 24){Now.hh = 0; Now.dd ++;}
+    }
+  }
 
   if(PumpPause > 0) PumpPause --;	// Отсчитываем паузу перед повторным включением насоса
   if(PumpWorkFlag == 1 && (PORTC & 0b00010000) == 0 ) // Если насос должен быть включен, но он вЫключен,
@@ -422,4 +456,21 @@ void HeaterStart(void)
 void HeaterStop(void)
 {
   PORTC &= 0b11111011;	// вЫключим обогреватель (он на PC2)
+}
+//---------------------------------------------------------------------
+int8_t timeCompare(struct TTime *time1, struct TTime *time2)    // Возвращает 1 если time1 больше (позже) time2. -1 если наоборот. 0 если даты равны
+{
+  if(time1->yy > time2->yy) return 1;
+  if(time1->yy < time2->yy) return -1;
+  if(time1->MM > time2->MM) return 1;
+  if(time1->MM < time2->MM) return -1;
+  if(time1->dd > time2->dd) return 1;
+  if(time1->dd < time2->dd) return -1;
+  if(time1->hh > time2->hh) return 1;
+  if(time1->hh < time2->hh) return -1;
+  if(time1->mm > time2->mm) return 1;
+  if(time1->mm < time2->mm) return -1;
+  if(time1->ss > time2->ss) return 1;
+  if(time1->ss < time2->ss) return -1;
+  return 0;
 }

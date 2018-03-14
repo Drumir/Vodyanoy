@@ -26,6 +26,20 @@
     }
   }
 
+  if($act == "gts"){      // Get TimeStamp  Вернуть таймштамп настроек
+    $query = "SELECT `timestamp` FROM `options` WHERE id=1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+    $result = mysqli_query($link, $query);
+    if(!$result){
+      $answer["status"] = "fail";
+      $answer["result"][0] = mysqli_error($link); 
+    }                
+    else {
+      $answer["status"] = "success";
+      if(mysqli_num_rows($result) > 0) 
+        $answer["result"][0] = mysqli_fetch_object($result); 
+    }
+  }
+
 
   if($act == "wT") {
     $temp = stripslashes($_GET['t']); 
