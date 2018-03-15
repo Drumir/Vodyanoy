@@ -230,11 +230,31 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
   waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
-
   strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=GetSettings\"");
   uart_send(query);
   waitAnswer("OK", 20);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitMessage();
+  if(str2int((char*)rx.buf+rx.ptrs[0]+14) == 200){  // Если сервер вернул правильный статус запроса
+    dropMessage();     // Отбросим ответ сервера
+    uart_send("AT+HTTPREAD=0,128");
+    waitMessage(); dropMessage();     // Отбросим эхо
+    waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
+    waitMessage();
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+30, 2); remoteSettingsTimestamp.yy = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+32, 2); remoteSettingsTimestamp.MM = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+34, 2); remoteSettingsTimestamp.dd = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+36, 2); remoteSettingsTimestamp.hh = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+38, 2); remoteSettingsTimestamp.mm = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+40, 2); remoteSettingsTimestamp.ss = str2int(str);
+    options.PumpWorkDuration = str2int((char*)rx.buf+rx.ptrs[0]+43);
+    dropMessage();     // Отбросим прочитанное
+    waitMessage(); dropMessage();     // Отбросим "ОК"
+  }
+  dropMessage();
+  uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
 }

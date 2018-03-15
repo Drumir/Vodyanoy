@@ -16,8 +16,8 @@
 
 
 
-#define MD_PUMPRELAXTIME	0x00	//  Коррекция длительности простоя насоса
-#define MD_PUMPWORKTIME		0x01	//  Коррекция длительности работы насоса
+#define MD_PUMPRELAXTIME	0x00	//  Выбор длительности простоя насоса
+#define MD_PUMPWORKTIME		0x01	//  Выбор длительности работы насоса
 #define MD_DIRPUMP			  0x02	//  Прямое управление насосом
 #define MD_STAT				    0x03	//  Статистика
 #define MD_DIRHEATER		  0x04	//  Прямое управление обогревателем
@@ -49,7 +49,7 @@
 #define EVENT_GSM_FAIL              2   // Модуль не может зарегистрироваться в GSM сети (нет сигнала?) 
 #define EVENT_GPRS_FAIL             3   // Модуль не может включить GPRS (отключен интернет?)
 #define EVENT_HTTP_FAIL             4   // Модуль не может подключиться к серверу (проблема  с сервером?)
-#define EVENT_NEW_LOCAL_SETTINGS    5   // Вручную заданы новые настройки водяного
+#define EVENT_NEW_LOCAL_SETTINGS    5   // Вручную (локально) заданы новые настройки водяного
 #define EVENT_NEW_REMOTE_SETTINGS   6   // Удаленно (через интернет) заданы новые настройки водяного 
 #define EVENT_PUMP_START_AUTO       7   // Старт насоса по расписанию
 #define EVENT_PUMP_START_MANUAL     8   // Старт насоса вручную
@@ -58,9 +58,9 @@
 #define EVENT_PUMP_STOP_MANUAL      11  // Отключение насоса вручную
 #define EVENT_PUMP_STOP_REMOTE      12  // Отключение насоса удаленно
 #define EVENT_PUMP_STOP_EMERGENCY   13  // Аварийное отключение насоса
-#define EVENT_PUMP_START_DENIED     14  // Запуск насоса не разрешен
+#define EVENT_PUMP_NO_SHEDULE       14  // Запуск насоса не разрешен из-за отсутствия расписания
 #define EVENT_HEATER_START_AUTO     15  // Автоматическое включение обогревателя 
-#define EVENT_HEATER_START_MANUAL   16  // Русное включение обогревателя
+#define EVENT_HEATER_START_MANUAL   16  // Ручное включение обогревателя
 #define EVENT_HEATER_START_REMOTE   17  // Удаленное включение обогревателя
 #define EVENT_HEATER_STOP_AUTO      18  // Автоматическое отключение обогревателя
 #define EVENT_HEATER_STOP_MANUAL    19  // Ручное отключение обогревателя
@@ -75,7 +75,8 @@
 #define EVENT_HISTORY_OVERLOAD      28  // Переполнение истории
 #define EVENT_START						      29	// Включение водяного
 #define EVENT_BALANCE_LOW			      30	// Мало денег на счету сим карты
-#define EVENT_OTHER									31  // Все остальные события
+#define EVENT_PUMP_CAN_FREEZE				31  // Запуск насоса не разрешен из-за возможной заморозки
+#define EVENT_OTHER									32  // Все остальные события
 
 #define LIGHT_TIME						10		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
@@ -85,7 +86,7 @@
 #define LIGHT_ON	PORTB &= 0b11110111
 #define LIGHT_OFF PORTB |= 0b00001000
 
-#define RXBUFMAXSIZE 128
+#define RXBUFMAXSIZE 600
 #define RXBUFSTRCOUNT 6
 
 FIFO( 128 ) uart_tx_fifo;
@@ -101,13 +102,13 @@ struct TState {
 }State;
 
 struct TRXB {
-  volatile char    buf[RXBUFMAXSIZE+1];     // Буфер для приёма входящих USART сообщений на всякий случай запишем после него 0
-  volatile int16_t ptrs[RXBUFSTRCOUNT];     // Массив смещений на начала принятых сообщений. смещение -1 означает, что смещение пустое
-  volatile int16_t wptr;                    // Смещение записи в buf
-  volatile int16_t startptr;                // Смещение начала текущего записываемого сообщения
-  volatile uint16_t buf_overflow_count;     // Счетчик переполнения буфера приема
-  volatile uint16_t ptrs_overflow_count;    // Счетчик переполнения ptrs
-}rx;
+  char    buf[RXBUFMAXSIZE+1];     // Буфер для приёма входящих USART сообщений на всякий случай запишем после него 0
+  int16_t ptrs[RXBUFSTRCOUNT];     // Массив смещений на начала принятых сообщений. смещение -1 означает, что смещение пустое
+  int16_t wptr;                    // Смещение записи в buf
+  int16_t startptr;                // Смещение начала текущего записываемого сообщения
+  uint16_t buf_overflow_count;     // Счетчик переполнения буфера приема
+  uint16_t ptrs_overflow_count;    // Счетчик переполнения ptrs
+};
 
 ISR(USART__RXC_vect);  //Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom32a.h (для mega32a) БЛЕАТЬ!!!
 ISR(USART__UDRE_vect);
@@ -161,28 +162,54 @@ void SIM900_SendHistory(void);                     // Отошлем на сервер историю 
 char buf[23], str[100];
 uint8_t					LightLeft, 		  // Сколько осталось работать подсветке в сек.
                 CheckUPause, 	  // Задержка проверки питающего напряжения при старте насоса в сек/10
-                FrostFlag,		  // Флаг того, что температура падала до -3*С и, возможно, насос замерз.
                 BtStat,				  // Состояние кнопок
-                Seconds,			  // Счетчик секунд из функции OneMoreSec()
-                PumpWorkFlag;   // Флаг, что в данный момент насос должен работать
+                Seconds;			  // Счетчик секунд из функции OneMoreSec()
 
-uint16_t				PumpWorkDuration,  	// Сколько времени должен работать насос
-                PumpRelaxDuration, 	// Сколько времени должен отдыхать насос
-                PumpPause,			    // Задержка перед повторным включением насоса в сек
+uint16_t				PumpPause,			    // Задержка перед повторным включением насоса в сек
                 Volts;
 
 volatile uint32_t	SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
 
-int16_t					HeaterOnTemp,				// Температура отключения обогревателя
-                PumpTimeLeft,		    // Сколько осталось качать/отдыхать насосу (в минутах?)
-                HeaterOffTemp;			// Температура включения обогревателя
-
 int8_t					MenuMode,			  // Номер текущего режима меню
                 SIM900Status;   // Cостояние связи
+                
+struct TSettings {          // Структура для хранения всех сохраняемых в eeprom настроек и переменных.
+  uint8_t       FrostFlag,		            // Флаг того, что температура падала до -3*С и, возможно, насос замерз.
+                PumpWorkFlag,             // Флаг, что в данный момент насос должен работать
+                fFreezeNotifications,     // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
+                fWarmNotifications,       // Флаги оповещения о перегреве.
+                fDoorNotifications,       // Флаги оповещения об открытии двери.
+                fFloodNotifications,      // Флаги оповещения о затоплении.
+                fPowerNotifications,      // Флаги оповещения о перебое электроснабжения.
+                fPowerRestNotifications,  // Флаги оповещения о восстановлении электроснабжения.
+                fOfflineNotifications,    // Флаги оповещения о длительном отсутствии интернета.
+                fBalanceNotifications,    // Флаги оповещения о критическом балансе на счёте
+                fDailyNotifications,      // Флаги ежедневного оповещения о состоянии
+                OperatorTel[11],          // Номер телефона оператора
+                AdminTel[11];             // Номер телефона администратора
+                
+                
+  uint16_t			PumpWorkDuration,  	      // Сколько времени должен работать насос (в минутах)
+                PumpRelaxDuration, 	      // Сколько времени должен отдыхать насос (в минутах)
+                ConnectPeriod,            // Период (в минутах) докладов на сервер. Если 0 - только при необходимости или по звонку
+                DisconnectionTime,        // Длительность отсутствия связи для оповещения об отсутствии связи
+                MinBalance,               // Баланс, при достижении которого нужно оповестить о критическом балансе
+                DailyReportTime;          // Время ежедневного отчета о состоянии (в минутах с начала суток)
 
-struct TTime Now, localSettingsTimestamp, remoteSettingsTimestamp;
+  int16_t				PumpTimeLeft,		          // Сколько осталось качать/отдыхать насосу (в минутах)
+                HeaterOnTemp,				      // Температура отключения обогревателя
+                HeaterOffTemp,			      // Температура включения обогревателя
+                FreezeTemp,               // Температура предупреждения о заморозке
+                WarmTemp;                 // Температура предупреждения о перегреве
+                
+  struct TTime  localSettingsTimestamp; 
+};
+
+struct TTime Now, remoteSettingsTimestamp;
+volatile struct TRXB rx;
+struct TSettings options;     // А не сделать ли их volatile ?!??!!?
 
 char istr[23];		// Буфер для использования в прерываниях
-char query[100];
+char query[100];  // Текстовый буфер для формирования Http запросов.
 
 #endif  // VODYANOY20_H

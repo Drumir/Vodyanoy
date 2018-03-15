@@ -12,7 +12,7 @@
     exit(json_encode($answer));
   }   
   
-  if($act == "readSettings"){
+  if($act == "GetSettings"){
     $query = "SELECT * FROM `options` WHERE id=1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
     $result = mysqli_query($link, $query);
     if(!$result){
@@ -21,8 +21,11 @@
     }                
     else {
       $answer["status"] = "success";
-      if(mysqli_num_rows($result) > 0) 
-        $answer["result"][0] = mysqli_fetch_object($result); 
+      if(mysqli_num_rows($result) > 0){ 
+        //$answer["result"][0] = mysqli_fetch_object($result); 
+        $obj = mysqli_fetch_object($result);
+        $answer["result"] = $obj->timestamp.",".$obj->pump_work.",".$obj->pump_idle.",".$obj->min_temp.",".$obj->max_temp.",".$obj->report_interval.",".$obj->cold_warning.",".$obj->cold_warning_temp.",".$obj->warm_warning.",".$obj->warm_warning_temp.",".$obj->door_warning.",".$obj->flooding_warning.",".$obj->power_warning.",".$obj->power_rest_warning.",".$obj->offline_warning.",".$obj->offline_warning_duration.",".$obj->balance_warning.",".$obj->balance_warning_summ.",".$obj->daily_report.",".$obj->daily_report_time.",".$obj->operator_number.",".$obj->admin_number;
+      }    
     }
   }
 
@@ -71,7 +74,6 @@
     $warm_warning_temp = stripslashes($_GET['warm_warning_temp']);
     $door_warning = stripslashes($_GET['door_warning']);
     $flooding_warning = stripslashes($_GET['flooding_warning']);
-    
     $power_warning = stripslashes($_GET['power_warning']);
     $power_rest_warning = stripslashes($_GET['power_rest_warning']);
     $offline_warning = stripslashes($_GET['offline_warning']);

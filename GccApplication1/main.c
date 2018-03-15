@@ -34,8 +34,8 @@ int main(void)
   TIMSK = 0b00010000;		// По совпадению счектчика1 и OCR1A
 
           	/* Инициализация АЦП */
-            // АЦП En,  not now,  single mode, reset iflag, INTs Disable,       предделитель частоты
-  ADCSRA = 1 << ADEN | 0 << ADSC | 0 << ADATE | 0 << ADIF | 0 << ADIE | 1 << ADPS2 | 1 << ADPS1 | 1 << ADPS0; 
+            // АЦП En,  not now,  single mode, reset iflag, INTs Enable,       предделитель частоты
+  ADCSRA = 1 << ADEN | 0 << ADSC | 0 << ADATE | 0 << ADIF | 1 << ADIE | 1 << ADPS2 | 1 << ADPS1 | 1 << ADPS0; 
 //	ADCSRA = 0b10001111;		// 1 - вкл, 0 - еще не старт, 0 - однократно, 0 - прерывания генерировать, 0 - прерывания АЦП разрешить, 111 - предделитель частоты 128
 	ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
 	ADCSRA |= 1<<ADSC;		// Старт пробного мусорного преобразования  
@@ -56,30 +56,46 @@ int main(void)
 	SilentLeft = FIRST_CONNECT_DELAY;
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
-  localSettingsTimestamp.yy = 0;
   remoteSettingsTimestamp.yy = 0;
 
-	PumpRelaxDuration =   (uint16_t)eeprom_read_word((uint16_t *)0x0000); // Прочитаем из ПЗУ
-	PumpWorkDuration =    (uint16_t)eeprom_read_word((uint16_t *)0x0002);
-	HeaterOffTemp =       (int16_t) eeprom_read_word((uint16_t *)0x0004);
-	HeaterOnTemp =        (int16_t) eeprom_read_word((uint16_t *)0x0006);
-	PumpWorkFlag =        (uint8_t) eeprom_read_word((uint16_t *)0x0008);
-	PumpTimeLeft =        (uint16_t)eeprom_read_word((uint16_t *)0x000A);
-	FrostFlag =           (uint8_t) eeprom_read_word((uint16_t *)0x000C); 	//Прочитаем,
+  eeprom_read_block(&options, 0, sizeof(struct TSettings));
 
 
-	if(PumpRelaxDuration == 0xFFFF) 			// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
-  	PumpRelaxDuration = 2;
-  	PumpWorkDuration = 2;
-  	HeaterOffTemp = 15;
-  	HeaterOnTemp = 5;
-  	PumpTimeLeft = 0;
-  	PumpWorkFlag = 0;
-  	FrostFlag = 0;
+  	options.FrostFlag = 0;
+  	options.PumpWorkFlag = 0;
+    options.fFreezeNotifications = 0;           // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
+    options.fWarmNotifications = 0;             // Флаги оповещения о перегреве.
+    options.fDoorNotifications = 0;             // Флаги оповещения об открытии двери.
+    options.fFloodNotifications = 0;            // Флаги оповещения о затоплении.
+    options.fPowerNotifications = 0;            // Флаги оповещения о перебое электроснабжения.
+    options.fPowerRestNotifications = 0;        // Флаги оповещения о восстановлении электроснабжения.
+    options.fOfflineNotifications = 0;          // Флаги оповещения о длительном отсутствии интернета.
+    options.fBalanceNotifications = 0;          // Флаги оповещения о критическом балансе на счёте
+    options.fDailyNotifications = 0;            // Флаги ежедневного оповещения о состоянии
+    strcpy((char*)options.OperatorTel, "9027891301");  // Номер телефона оператора
+    strcpy((char*)options.OperatorTel, "9040448302");  // Номер телефона администратора
+  	options.PumpWorkDuration = 120;             // Сколько времени должен работать насос (в минутах)
+  	options.PumpRelaxDuration = 240;            // Сколько времени должен отдыхать насос (в минутах)
+    options.ConnectPeriod = 5;                  // Период (в минутах) докладов на сервер. Если 0 - только при необходимости или по звонку
+    options.DisconnectionTime = 120;            // Длительность отсутствия связи для оповещения о проблемах со связью
+    options.MinBalance = 10;                    // Баланс, при достижении которого нужно оповестить о критическом балансе
+    options.DailyReportTime = 960;              // Время ежедневного отчета о состоянии (в минутах с начала суток)
+    options.PumpTimeLeft = 0;		                // Сколько осталось качать/отдыхать насосу (в минутах?)
+    options.HeaterOnTemp = 2;				            // Температура отключения обогревателя
+    options.HeaterOffTemp = 10;			            // Температура включения обогревателя
+    options.FreezeTemp = 0;                    // Температура предупреждения о заморозке
+    options.WarmTemp = 40;                      // Температура предупреждения о перегреве
+    options.localSettingsTimestamp.yy = 0;      // Время последнего обновления локальных настроек
+    options.localSettingsTimestamp.MM = 0;
+    options.localSettingsTimestamp.dd = 0;
+    options.localSettingsTimestamp.hh = 0;
+    options.localSettingsTimestamp.mm = 0;
+    options.localSettingsTimestamp.ss = 0;
 	}
 
-	if(PumpWorkFlag == 1 && PumpTimeLeft != 0)		// Если до длительного отключения насос был включен
+	if(options.PumpWorkFlag == 1 && options.PumpTimeLeft != 0)		// Если до длительного отключения насос был включен
 	PumpPause = PUMP_RESTART_PAUSE/2;						// На всякий случай подождем ещ половину "паузы перед включением"
     
   uart_init();
@@ -110,11 +126,11 @@ int main(void)
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
         SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
-        if(timeCompare(&localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
+        if(timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
         {
           SIM900_SendSettings();                                                  // Отошлем их на сервер
         } 
-        else if (timeCompare(&localSettingsTimestamp, &remoteSettingsTimestamp) < 0) // Если настройки на сервере новее
+        else if (timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) < 0) // Если настройки на сервере новее
         {
           SIM900_GetSettings();                                                       // Скачаем и примем их
         }
@@ -162,18 +178,18 @@ void OneMoreSec(void)
   }
 
   if(PumpPause > 0) PumpPause --;	// Отсчитываем паузу перед повторным включением насоса
-  if(PumpWorkFlag == 1 && (PORTC & 0b00010000) == 0 ) // Если насос должен быть включен, но он вЫключен,
+  if(options.PumpWorkFlag == 1 && (PORTC & 0b00010000) == 0 ) // Если насос должен быть включен, но он вЫключен,
   {
-    a = PumpTimeLeft;										// Сохраним оставшееся время
+    a = options.PumpTimeLeft;										// Сохраним оставшееся время
     PumpStart();										// Снова включим насос (Оставшееся время при этом станет равным заданному в расписании)
-    PumpTimeLeft = a;										// Вернем оставшееся время
+    options.PumpTimeLeft = a;										// Вернем оставшееся время
   }
 
   if(LightLeft > 0) LightLeft --; 
   if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; Save(); MenuMode = MD_STAT;}
 
       // ????????????
-  if(PumpPause != 0 && PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
+  if(PumpPause != 0 && options.PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
   {
     Seconds --;
     return;
@@ -184,13 +200,11 @@ void OneMoreSec(void)
   }
 
   if(Seconds == 35){     // Каждую 58 секунду - чтение температуры
-    ADMUX  = 0b11000000;		// 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
-    ADCSRA |= 1<<ADSC;		// Старт преобразования
     State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
     //  Temp >>= 4; // 4
-  if(State.Temp <= HeaterOnTemp) HeaterStart();	//
-  if(State.Temp >= HeaterOffTemp) HeaterStop();	// При необходимости включим или выключим обогреватель
-  if(State.Temp < -2 && PumpWorkFlag == 0) FrostFlag = 1;
+    if(State.Temp <= options.HeaterOnTemp*16) HeaterStart();	//
+    if(State.Temp >= options.HeaterOffTemp*16) HeaterStop();	// При необходимости включим или выключим обогреватель
+    if(State.Temp < -3 && options.PumpWorkFlag == 0) options.FrostFlag = 1;
   }
 
 
@@ -198,15 +212,15 @@ void OneMoreSec(void)
   {
     Seconds = 0;
     
-    if(PumpWorkDuration != 0 && PumpRelaxDuration != 0)	//Проверим что время работы и отдыха насоса не равно 0. Если равно - никакого автоматического включения/выключения!
+    if(options.PumpWorkDuration != 0 && options.PumpRelaxDuration != 0)	//Проверим что время работы и отдыха насоса не равно 0. Если равно - никакого автоматического включения/выключения!
     {
-      PumpTimeLeft --;
-      if(PumpTimeLeft <= 0 && PumpWorkFlag == 1)PumpStop();   // Закончилось время работы насоса
-      if(PumpTimeLeft <= 0 && PumpWorkFlag == 0)              // Закончилось время отдыха насоса
+      options.PumpTimeLeft --;
+      if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 1)PumpStop();   // Закончилось время работы насоса
+      if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0)              // Закончилось время отдыха насоса
         if(PumpStart() == 0)    // Если запуск насоса не удался
         {
           //LCD_gotoXY(0, 2); LCD_writeString(str);		//Если старт насоса вернул ошибку - отобразим её
-          PumpTimeLeft ++; 									//И подождем еще одну минуту
+          options.PumpTimeLeft ++; 									//И подождем еще одну минуту
         }
     }
     OneMoreMin();
@@ -417,33 +431,28 @@ int16_t str2int(char* str)
 //---------------------------------------------------------------------
 void Save(void)
 {
-  if(PumpWorkDuration == 0 || PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длетльность работы или отдыха насоса
+  if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длительность работы или отдыха насоса
 
 //  if((uint16_t)eeprom_read_word((uint16_t *)0x0000) == 0 && PumpRelaxDuration != 0) PumpTimeLeft = PumpRelaxDuration; //PumpStop();		Что-то тут непонятное........
-
-  eeprom_update_word((uint16_t *)0x00, (uint16_t)PumpRelaxDuration);
-  eeprom_update_word((uint16_t *)0x02, (uint16_t)PumpWorkDuration);
-  eeprom_update_word((uint16_t *)0x04, (uint16_t)HeaterOffTemp);
-  eeprom_update_word((uint16_t *)0x06, (uint16_t)HeaterOnTemp);
-  eeprom_update_word((uint16_t *)0x0C, (uint16_t)FrostFlag);
+  eeprom_write_block(&options, 0, sizeof(struct TSettings));
 }
 //---------------------------------------------------------------------
 void PumpStop(void)
 {
-  PumpTimeLeft = PumpRelaxDuration;
-  PumpWorkFlag = 0;
+  options.PumpTimeLeft = options.PumpRelaxDuration;
+  options.PumpWorkFlag = 0;
   PORTC &= 0b11101111;			// вЫключим насос (он на PC4)
   if(PumpPause < 1) PumpPause = PUMP_RESTART_PAUSE;
 }
 //---------------------------------------------------------------------
 uint8_t PumpStart(void)
 {
-  if(PumpWorkDuration == 0  || PumpRelaxDuration == 0){strcpy(str, "Нет расписания"); return 0;}
-  if(FrostFlag == 1){strcpy(str, "Возм.заморозка"); return 0;}
+  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(str, "Нет расписания"); return 0;}
+  if(options.FrostFlag == 1){strcpy(str, "Возм.заморозка"); return 0;}
   if(PumpPause > 0){ strcpy(str, "Пауза "); itoa(PumpPause/10, buf, 10); strcat(str, buf); strcat(str, " сек   ");return 0;}
-  PumpTimeLeft = PumpWorkDuration;
+  options.PumpTimeLeft = options.PumpWorkDuration;
   CheckUPause = 20;		// 2 секунды не проверять питающее напряжение!
-  PumpWorkFlag = 1;
+  options.PumpWorkFlag = 1;
   PORTC |= 0b00010000;	// Включим насос (он на PC4)
   return 1;
 }
