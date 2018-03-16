@@ -81,12 +81,12 @@
 #define LIGHT_TIME						10		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
-#define FIRST_CONNECT_DELAY		11		// Время в секундах от включения устройства до первой попытки связи с сервером
+#define FIRST_CONNECT_DELAY		3 		// Время в секундах от включения устройства до первой попытки связи с сервером
 
 #define LIGHT_ON	PORTB &= 0b11110111
 #define LIGHT_OFF PORTB |= 0b00001000
 
-#define RXBUFMAXSIZE 600
+#define RXBUFMAXSIZE 300
 #define RXBUFSTRCOUNT 6
 
 FIFO( 128 ) uart_tx_fifo;
@@ -139,7 +139,6 @@ int16_t str2int(char* str);
 void waitMessage(void);
 int8_t timeCompare(struct TTime *timeOne, struct TTime *timeTwo);
 
-void SIM900_SendReport(void);
 void SIM900_GetBalance(void);
 void SIM900_WaitRegistration(void);
 void SIM900_PowerOn(void);
@@ -156,10 +155,6 @@ void SIM900_SendStatus(void);                      // Отошлем на сервер текущее 
 void SIM900_SendHistory(void);                     // Отошлем на сервер историю событий
 
 
-
-
-
-char buf[23], str[100];
 uint8_t					LightLeft, 		  // Сколько осталось работать подсветке в сек.
                 CheckUPause, 	  // Задержка проверки питающего напряжения при старте насоса в сек/10
                 BtStat,				  // Состояние кнопок
@@ -184,8 +179,9 @@ struct TSettings {          // Структура для хранения всех сохраняемых в eeprom 
                 fPowerRestNotifications,  // Флаги оповещения о восстановлении электроснабжения.
                 fOfflineNotifications,    // Флаги оповещения о длительном отсутствии интернета.
                 fBalanceNotifications,    // Флаги оповещения о критическом балансе на счёте
-                fDailyNotifications,      // Флаги ежедневного оповещения о состоянии
-                OperatorTel[11],          // Номер телефона оператора
+                fDailyNotifications;      // Флаги ежедневного оповещения о состоянии
+                
+  char          OperatorTel[11],          // Номер телефона оператора
                 AdminTel[11];             // Номер телефона администратора
                 
                 
@@ -211,5 +207,7 @@ struct TSettings options;     // А не сделать ли их volatile ?!??!!?
 
 char istr[23];		// Буфер для использования в прерываниях
 char query[100];  // Текстовый буфер для формирования Http запросов.
+char buf[23], str[100];
+
 
 #endif  // VODYANOY20_H

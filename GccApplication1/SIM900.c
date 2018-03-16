@@ -45,7 +45,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
 }
 
 
-void SIM900_SendReport(void)
+void SIM900_SendStatus(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
@@ -225,6 +225,7 @@ void SIM900_SendSettings(void)                    // Отсылает настройки на серве
 //----------------------------------------------------------------
 void SIM900_GetSettings(void)                     // Берет настройки с сервера м применяет их
 {
+  uint16_t commaPosition = 0;
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
   waitAnswer("OK", 20);
@@ -242,14 +243,60 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
     uart_send("AT+HTTPREAD=0,128");
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
-    waitMessage();
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+30, 2); remoteSettingsTimestamp.yy = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+32, 2); remoteSettingsTimestamp.MM = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+34, 2); remoteSettingsTimestamp.dd = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+36, 2); remoteSettingsTimestamp.hh = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+38, 2); remoteSettingsTimestamp.mm = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+40, 2); remoteSettingsTimestamp.ss = str2int(str);
-    options.PumpWorkDuration = str2int((char*)rx.buf+rx.ptrs[0]+43);
+    waitMessage();                    // {"status":"success","result":"180315230102,120,240,3,10,5,8,-1,8,40,8,8,8,8,8,60,8,20,8,960,9027891301,9040448302"}
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+30, 2); options.localSettingsTimestamp.yy = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+32, 2); options.localSettingsTimestamp.MM = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+34, 2); options.localSettingsTimestamp.dd = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+36, 2); options.localSettingsTimestamp.hh = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+38, 2); options.localSettingsTimestamp.mm = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+40, 2); options.localSettingsTimestamp.ss = str2int(str);  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    commaPosition ++;
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе вторую запятую
+    commaPosition ++;
+    options.PumpWorkDuration = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition);
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.PumpRelaxDuration = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.HeaterOnTemp = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.HeaterOffTemp = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.ConnectPeriod = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fFreezeNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.FreezeTemp = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fWarmNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.WarmTemp = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fDoorNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fFloodNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fPowerNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fPowerRestNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fOfflineNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.DisconnectionTime = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fBalanceNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.MinBalance = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.fDailyNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    options.DailyReportTime = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    strncpy((char*)options.AdminTel, (char*)rx.buf+rx.ptrs[0] + ++commaPosition, 10);  
+    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    strncpy((char*)options.OperatorTel, (char*)rx.buf+rx.ptrs[0] + ++commaPosition, 10);
+    uart_send((char*)options.AdminTel);
+    uart_send((char*)options.OperatorTel);
     dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
   }
@@ -257,23 +304,6 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
-}
-//----------------------------------------------------------------
-void SIM900_SendStatus(void)                      // Отошлем на сервер текущее состояние
-{
-  if(SIM900Status < SIM900_GPRS_OK) return;
-  uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
-  uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
-
-  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=sendStatus\"");
-  uart_send(query);
-  waitAnswer("OK", 20);
-  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
-  
 }
 //----------------------------------------------------------------
 void SIM900_SendHistory(void)                     // Отошлем на сервер историю событий

@@ -58,10 +58,11 @@ int main(void)
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
   remoteSettingsTimestamp.yy = 0;
 
-  eeprom_read_block(&options, 0, sizeof(struct TSettings));
+  eeprom_read_block(&options, (const void*)0x00, sizeof(struct TSettings));
 
 
-	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+//	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(0) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
   	options.FrostFlag = 0;
   	options.PumpWorkFlag = 0;
@@ -75,7 +76,7 @@ int main(void)
     options.fBalanceNotifications = 0;          // Флаги оповещения о критическом балансе на счёте
     options.fDailyNotifications = 0;            // Флаги ежедневного оповещения о состоянии
     strcpy((char*)options.OperatorTel, "9027891301");  // Номер телефона оператора
-    strcpy((char*)options.OperatorTel, "9040448302");  // Номер телефона администратора
+    strcpy((char*)options.AdminTel, "9040448302");  // Номер телефона администратора
   	options.PumpWorkDuration = 120;             // Сколько времени должен работать насос (в минутах)
   	options.PumpRelaxDuration = 240;            // Сколько времени должен отдыхать насос (в минутах)
     options.ConnectPeriod = 5;                  // Период (в минутах) докладов на сервер. Если 0 - только при необходимости или по звонку
@@ -94,20 +95,16 @@ int main(void)
     options.localSettingsTimestamp.mm = 0;
     options.localSettingsTimestamp.ss = 0;
 	}
+  
+//  Save();
 
 	if(options.PumpWorkFlag == 1 && options.PumpTimeLeft != 0)		// Если до длительного отключения насос был включен
 	PumpPause = PUMP_RESTART_PAUSE/2;						// На всякий случай подождем ещ половину "паузы перед включением"
     
   uart_init();
   sei();
-
+  
 //  SIM900_SendReport();
-/*  
-  strcpy(str, "PumpRelaxDuration= ");
-  itoa(PumpRelaxDuration, buf, 10);
-  strcat(str, buf);
-  uart_send(str);
-*/
 
 
   while (1) 
@@ -122,7 +119,8 @@ int main(void)
           RecToHistory(EVENT_START);     // Если сеанс первый - впишем в историю событие старта
         }         
         else SIM900_GetTime();              
-      }         
+      }  
+       
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
         SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
@@ -134,8 +132,24 @@ int main(void)
         {
           SIM900_GetSettings();                                                       // Скачаем и примем их
         }
-        SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
-        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
+        strcpy(str, "");
+        itoa(options.PumpWorkDuration ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.PumpRelaxDuration ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.HeaterOnTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.HeaterOffTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.ConnectPeriod ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.FreezeTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.fFreezeNotifications ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.WarmTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.fWarmNotifications ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.fPowerNotifications ,buf, 10); strcat(str, buf); strcat(str, " ");
+        itoa(options.DailyReportTime ,buf, 10); strcat(str, buf); strcat(str, " ");
+        strcat(str, options.OperatorTel); strcat(str, " ");
+        strcat(str, options.AdminTel);
+        uart_send(str);
+        _delay_ms(1000);
+//        SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
+//        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
     }    
   }
@@ -186,7 +200,7 @@ void OneMoreSec(void)
   }
 
   if(LightLeft > 0) LightLeft --; 
-  if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; Save(); MenuMode = MD_STAT;}
+  if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; /*Save();*/ MenuMode = MD_STAT;}
 
       // ????????????
   if(PumpPause != 0 && options.PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
@@ -434,7 +448,7 @@ void Save(void)
   if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длительность работы или отдыха насоса
 
 //  if((uint16_t)eeprom_read_word((uint16_t *)0x0000) == 0 && PumpRelaxDuration != 0) PumpTimeLeft = PumpRelaxDuration; //PumpStop();		Что-то тут непонятное........
-  eeprom_write_block(&options, 0, sizeof(struct TSettings));
+  eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));
 }
 //---------------------------------------------------------------------
 void PumpStop(void)
