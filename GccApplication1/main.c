@@ -61,8 +61,8 @@ int main(void)
   eeprom_read_block(&options, (const void*)0x00, sizeof(struct TSettings));
 
 
-	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
-//	if(0) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+//	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(0) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
   	options.FrostFlag = 0;
   	options.PumpWorkFlag = 0;
@@ -105,13 +105,13 @@ int main(void)
   spi_init();
  	_delay_ms(100);      //на момент инициализации SLI_LCD, дисплей должен быть уже включен и готов
   LCD_init();
+  sensor_write(0x44);   // старт измерения температуры
+  _delay_ms(1000);
+  State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
+
   sei();
   
 //  SIM900_SendReport();
-	  LCD_clear();
-    LCD_gotoXY(0,0); LCD_writeString(options.OperatorTel);
-    LCD_gotoXY(0,1); LCD_writeString(options.AdminTel);
-
   while (1) 
   {
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
@@ -156,7 +156,7 @@ int main(void)
         SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
 //        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
-    }    
+    } 
   }
 }
 
@@ -246,7 +246,7 @@ void OneMoreSec(void)
   }
   if(SilentLeft > 0) SilentLeft --;     // Счетчик секунд до сеанса связи
 
-//  if(MenuMode == MD_STAT)ShowStat();
+  if(MenuMode == MD_STAT)ShowStat();
   
 }
 
@@ -259,33 +259,137 @@ ISR(ADC_vect)          // Завершение преобразования АЦП
 
 ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 {
-  sei();
   unsigned char bstat;  
+	cli();
+	LightLeft = LIGHT_TIME; 
+  LIGHT_ON;
+
   bstat = PIND & 0b01111000;
   if (bstat == 0b01010000)       // Кнопка вниз 
-  {
-    PORTC &= 0b11101111;  //Выключить насос
-    /*
-    cbi(PORTB, 1);
-    _delay_ms(1500);
-    sbi(PORTB, 1);
-    LCD_Puts("*TurnOFF*");
-    while((PINB & 0b00000001) == 1)_delay_ms(10);      // Ждем 0 на STATUS
-    LCD_Puts("*PowerDown*");
-    cbi(PORTD, 7);      // Disable 4.0v
-    */
-  }
+	{
+  	switch(MenuMode)
+  	{
+    	case MD_DIRPUMP:{ PumpStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
+    	case MD_DIRHEATER:{ HeaterStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
+    	case MD_PUMPWORKTIME:
+    	{
+      	if(options.PumpWorkDuration == 0) options.PumpWorkDuration = 420;
+      	else options.PumpWorkDuration -= DELTA_TIME;
+      	DrawMenu();
+      	break;
+    	}
+    	case MD_PUMPRELAXTIME:
+    	{
+      	if(options.PumpRelaxDuration == 0) options.PumpRelaxDuration = 2160;
+      	else options.PumpRelaxDuration -= DELTA_TIME;
+      	DrawMenu();
+      	break;
+    	}
+
+    	case MD_MIN_T:
+    	{
+      	if(options.HeaterOnTemp > 0) options.HeaterOnTemp --;
+      	DrawMenu();
+      	break;
+    	}
+
+    	case MD_MAX_T:
+    	{
+      	if(options.HeaterOffTemp-1 > options.HeaterOnTemp) options.HeaterOffTemp --;
+      	DrawMenu();
+      	break;
+    	}
+    	case MD_STAT:
+    	{
+      	break;
+    	}
+    	case MD_CLEAR:			// Забыть статистику
+    	{
+      	options.FrostFlag = 0;
+      	PumpPause = 0;
+      	MenuMode = MD_STAT;
+      	DrawMenu();
+      	break;
+    	}
+  	}
+	}
   if (bstat == 0b01100000)       // Кнопка вверх
-  {
-    PORTC |= 0b00010000;  //Выключить насос
-  }
+	{
+  	switch(MenuMode)
+  	{
+    	case MD_DIRPUMP:				// Включить насос вручную
+    	{
+      	LCD_gotoXY(0, 3);
+      	if(PumpStart() == 0) LCD_writeStringInv(str);	//Если старт насоса вернул ошибку - отобразить её
+      	else { LCD_writeString("  Включено    ");}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
+      	break;
+    	}
+    	case MD_DIRHEATER:{ HeaterStart(); LCD_gotoXY(0, 3);LCD_writeString("  Включено    "); break;}
+    	case MD_PUMPWORKTIME:
+    	{
+      	options.PumpWorkDuration += DELTA_TIME;
+      	if(options.PumpWorkDuration > 420) options.PumpWorkDuration = 0;
+      	DrawMenu();
+      	break;
+    	}
+    	case MD_PUMPRELAXTIME:
+    	{
+      	options.PumpRelaxDuration += DELTA_TIME;
+      	if(options.PumpRelaxDuration > 2160) options.PumpRelaxDuration = 0;
+      	DrawMenu();
+      	break;
+    	}
+
+    	case MD_MIN_T:
+    	{
+      	if(options.HeaterOnTemp+1 < options.HeaterOffTemp) options.HeaterOnTemp ++;
+      	DrawMenu();
+      	break;
+    	}
+
+    	case MD_MAX_T:
+    	{
+      	if(options.HeaterOffTemp < 20) options.HeaterOffTemp ++;			//Временно для тестов. Исправить на 10С-15С
+      	DrawMenu();
+      	break;
+    	}
+    	case MD_STAT:
+    	{
+      	break;
+    	}
+    	case MD_CLEAR:			// Забыть настройки
+    	{
+      	options.PumpRelaxDuration = 0;
+      	options.PumpWorkDuration = 0;
+      	options.HeaterOffTemp = 15;
+      	options.HeaterOnTemp = 5;
+      	Save();
+      	options.PumpTimeLeft = 0;
+      	PumpStop();
+      	MenuMode = MD_STAT;
+      	DrawMenu();
+      	break;
+    	}
+    				
+  	}
+	}
   if (bstat == 0b00110000)       // Кнопка влево
   {
+		Save();
+		MenuMode --;
+		if(MenuMode < 0) MenuMode = MD_LAST-1;
+		DrawMenu();
   }
   
   if (bstat == 0b01110000)      // Кнопка вправо
   {  
+		Save();
+		MenuMode ++;
+		if(MenuMode == MD_LAST) MenuMode = 0;
+		DrawMenu();
   }
+
+  sei();
 }
 //------------------------------------------------------------------------------
 ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц)
@@ -502,3 +606,123 @@ int8_t timeCompare(struct TTime *time1, struct TTime *time2)    // Возвращает 1 
   if(time1->ss < time2->ss) return -1;
   return 0;
 }
+//---------------------------------------------------------------------
+void DrawMenu(void)
+{
+  int x;
+  LCD_clear();
+  switch(MenuMode)
+  {
+    case MD_DIRPUMP:
+    case MD_DIRHEATER:
+    {
+      strcpy(buf, "    Насос     "); buf[11] = 0x80; buf[12] = 0x81;
+      if(MenuMode == MD_DIRHEATER){strcpy(buf, "   Обогрев    "); buf[11] = 0xA8; buf[12] = 0xA8;}
+      LCD_gotoXY(0, 0);LCD_writeStringInv(buf);
+      LCD_gotoXY(0, 1);	LCD_writeString(" Прямо сейчас ");
+      LCD_gotoXY(0, 2);		strcpy(buf, "     ВКЛ      "); buf[4] = 0xAB; buf[9] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 3);	LCD_writeString("              ");
+      LCD_gotoXY(0, 4);		strcpy(buf, "     ВыКЛ     "); buf[4] = 0xAC; buf[9] = 0xAC; LCD_writeString(buf);
+      break;
+    }
+    case MD_PUMPWORKTIME:
+    case MD_PUMPRELAXTIME:
+    {
+      x = 3; if(MenuMode == MD_PUMPRELAXTIME) x = 10;
+      LCD_gotoXY(0, 0);LCD_writeStringInv(" Насос.Распис ");
+      LCD_gotoXY(0, 1);	LCD_writeString(" Работ  Стоит ");
+      LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 3);MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, str);strcat(buf, str);LCD_writeString(buf);
+      LCD_gotoXY(0, 4);		strcpy(buf, "              "); buf[x] = 0xAC; LCD_writeString(buf);
+      break;
+    }
+    case MD_MIN_T:
+    case MD_MAX_T:
+    {
+      x = 3; if(MenuMode == MD_MAX_T) x = 10;
+      LCD_gotoXY(0, 0);LCD_writeStringInv("Обогрев.Распис");
+      LCD_gotoXY(0, 1);	LCD_writeString("  ВКЛ   ВыКЛ  ");
+      LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
+      itoa(options.HeaterOnTemp, buf+2, 10); strcpy(str, "*C    "); str[0] = 0xBF; strcat(buf, str); itoa(options.HeaterOffTemp, str, 10); strcat(buf, str); strcpy(str, "*C   ");str[0] = 0xBF; strcat(buf, str);
+      LCD_gotoXY(0, 3);	LCD_writeString(buf);
+      LCD_gotoXY(0, 4);		strcpy(buf, "              "); buf[x] = 0xAC; LCD_writeString(buf);
+      break;
+    }
+    case MD_STAT: { ShowStat(); break;}
+    case MD_CLEAR:
+    {
+      LCD_gotoXY(0, 0);LCD_writeStringInv("    Сброс     ");
+      LCD_gotoXY(0, 1);LCD_writeStringInv("              ");
+      LCD_gotoXY(0, 2);		strcpy(buf, "  настройки   "); buf[1] = 0xAB; buf[12] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 3);	LCD_writeString("   Сбросить   ");
+      LCD_gotoXY(0, 4);		strcpy(buf, "  статистику  "); buf[1] = 0xAC; buf[12] = 0xAC; LCD_writeString(buf);
+      break;
+    }
+
+  }
+}
+//---------------------------------------------------------------------
+void ShowStat(void)
+{
+  LCD_clear();
+  LCD_gotoXY(0, 0); LCD_writeStringInv("  Статистика  ");		// Отобразим заголовок
+
+  itoa(State.Temp/16, buf, 10);
+  strcpy(str, "*C           "); str[0] = 0xBF;
+//  if( PORTD & 0b01000000 ){str[4] = 0xA8;str[5] = 0xA8;}
+//  if( PORTD & 0b10000000 ){str[7] = 0x80;str[8] = 0x81;}
+  if( 1 ){str[4] = 0xA8;str[5] = 0xA8;}
+  if( 1 ){str[7] = 0x80;str[8] = 0x81;}
+  strcat(buf, str);
+  LCD_gotoXY(0, 1);	 LCD_writeString(buf);					// Отобразим температуру и состояние обогревателя и насоса
+
+  if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0)
+  strcpy(buf, "Таймер ОТКЛ   ");
+  else
+  {
+    MinToStr(options.PumpTimeLeft, buf);
+    strcat(buf, " до ");
+    options.PumpWorkFlag == 1 ? strcpy(str, "вЫк       ") : strcpy(str, "вкл      ");
+    str[3] = 0x80; str[4] = 0x81;
+    strcat(buf, str);
+  }
+  if(PumpPause != 0 && options.PumpWorkFlag == 1)
+  {
+    strcpy(buf, "Пауза ");
+    itoa(PumpPause/10, str, 10);
+    strcat(buf, str);
+    strcat(buf, " сек.   ");
+  }
+  if(options.FrostFlag == 1)
+  strcpy(buf, "Возм.заморозка");
+  LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение если есть
+
+  /*
+  strcpy(buf, "Сб.пит:");
+  itoa(LongBreak, str, 10); strcat(buf, str); strcat(buf, "дл.");
+  itoa(ShortBreak, str, 10); strcat(buf, str); strcat(buf, "кр.   ");
+  LCD_gotoXY(0, 3); LCD_writeString(buf);						// Отобразим статистику по питанию
+  */
+  /*
+  strcpy(buf, "  вкл "); buf[0] = 0xA8; buf[1] = 0xA8;
+  if(HeaterTotal != 0) itoa((unsigned int)((HeaterWork*100)/HeaterTotal), str, 10);
+  else strcpy(str, "--");
+  strcat(buf, str); strcat(buf, "% врем  ");
+  if(HeaterWork >= 0x28F3980) strcpy(buf, "НуженСбросСтат");	// Обогреватель работает уже 497 суток. Счетчик вот-вот переполнится
+  LCD_gotoXY(0, 4); LCD_writeString(buf);						// Отобразим статистику по обогреву
+  */
+}
+//---------------------------------------------------------------------
+void MinToStr(unsigned int Min, char *str)
+{
+  int m, h;
+  h = Min/60;
+  m = Min - h*60;
+  str[0] = '0';
+  h < 10 ? itoa(h, str+1, 10) : itoa(h, str, 10);
+  str[2] = ':';
+  str[3] = '0';
+  m < 10 ? itoa(m, str+4, 10) : itoa(m, str+3, 10);
+  return;
+}
+//---------------------------------------------------------------------

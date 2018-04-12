@@ -27,7 +27,6 @@
                                  Public function prototypes
 --------------------------------------------------------------------------------------------------*/
 void LCD_init ( void );
-void LCD_initC ( unsigned char contrast );
 void LCD_clear ( void );
 void LCD_gotoXY ( unsigned char x, unsigned char y );
 void LCD_gotoX (unsigned char x);

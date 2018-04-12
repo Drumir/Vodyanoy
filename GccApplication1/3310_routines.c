@@ -29,10 +29,10 @@ unsigned char char_start;
   Return value :  None.
 --------------------------------------------------------------------------------------------------*/
 //SPI initialize
-//clock rate: CPUclk/4   (для 8МГц - 2 Мб/с)
+//clock rate: CPUclk/2 
 void spi_init(void)
 {
-//	SPCR = 0x58; //setup SPI		Импульсы отрицательной полярности (если нет импульсов - стоит 1). Данные синхронизируются по переднему фронту
+//	SPCR = 0x58; //setup SPI		
   SPCR = 0 << SPIE | 1 << SPE | 0 << DORD | 1 << MSTR | 1 << CPOL | 0 << CPHA | 0 << SPR1 | 0 << SPR0;
   SPSR = 1 << SPI2X;
 }
@@ -63,30 +63,7 @@ void LCD_init ( void )
     LCD_writeCommand( 0x20 );  // LCD Standard Commands, Horizontal addressing mode.
     LCD_writeCommand( 0x0c );  // LCD in normal mode.
 }
-/*
-void LCD_initC ( unsigned char contrast )
-{
-    
-	_delay_ms(100);
-	
-	CLEAR_SCE_PIN;    //Enable LCD
-    
-	CLEAR_RST_PIN;	//reset LCD
-    _delay_ms(100);
-    SET_RST_PIN;
-	
-	SET_SCE_PIN;	//disable LCD
 
-    LCD_writeCommand( 0x21 );  // LCD Extended Commands.
-    LCD_writeCommand( contrast );  // Set LCD Vop (Contrast).
-    LCD_writeCommand( 0x04 );  // Set Temp coefficent.
-    LCD_writeCommand( 0x13 );  // LCD bias mode 1:48.
-    LCD_writeCommand( 0x20 );  // LCD Standard Commands, Horizontal addressing mode.
-    LCD_writeCommand( 0x0c );  // LCD in normal mode.
-
-    LCD_clear();
-}
-*/
 /*--------------------------------------------------------------------------------------------------
   Name         :  LCD_writeCommand
   Description  :  Sends command to display controller.
@@ -184,9 +161,9 @@ void LCD_writeChar (unsigned char ch)
 {
    unsigned char j;
   
-	LCD_writeData(0x00);
+	//LCD_writeData(0x00);
    
-   for(j=0; j<6; j++)
+   for(j = 0; j < 6; j ++)
      LCD_writeData( pgm_read_byte(&(smallFont [(ch-32)*6 + j] )));
 	 
 //   LCD_writeData(0x00);
@@ -201,9 +178,9 @@ void LCD_writeCharInv (unsigned char ch)
 {
    unsigned char j;
   
-   LCD_writeData(0xFF);
+   //LCD_writeData(0xFF);
    
-   for(j=0; j<6; j++)
+   for(j = 0; j < 6; j ++)
      LCD_writeData( ~(pgm_read_byte(&(smallFont [(ch-32)*6 + j] ))));
 	 
 //   LCD_writeData( 0xFF );
@@ -234,27 +211,6 @@ void LCD_writeStringInv ( const char *string )
         LCD_writeCharInv( *string++ );
 }
 
-
-/*--------------------------------------------------------------------------------------------------
-  Name         :  delay_ms
-  Description  :  1 millisec delay (appx.)
-  Argument(s)  :  None.
-  Return value :  None.
---------------------------------------------------------------------------------------------------*/
-/*
-void delay_ms(int miliSec)  //for 1Mhz clock
-{
-  int i,j;
-  
-  for(i=0;i<miliSec;i++)
-    for(j=0;j<800;j++)
-	{
-	  asm("nop");
-	  asm("nop");
-	}
-}
-
-*/
 /*--------------------------------------------------------------------------------------------------
                                          End of file.
 --------------------------------------------------------------------------------------------------*/
