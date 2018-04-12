@@ -12,7 +12,7 @@
 #include <util/delay.h>
 #include "uart.h"
 #include "DS18B20.h"
-#include "SPI2TWI.h"
+#include "3310_routines.h"
 
 
 
@@ -83,8 +83,8 @@
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
 #define FIRST_CONNECT_DELAY		3 		// Время в секундах от включения устройства до первой попытки связи с сервером
 
-#define LIGHT_ON	PORTB &= 0b11110111
-#define LIGHT_OFF PORTB |= 0b00001000
+#define LIGHT_ON	PORTB &= ~(1 << 3)
+#define LIGHT_OFF PORTB |= (1 << 3)
 
 #define RXBUFMAXSIZE 300
 #define RXBUFSTRCOUNT 6

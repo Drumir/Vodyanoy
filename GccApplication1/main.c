@@ -13,12 +13,12 @@ volatile uint16_t TimeoutTackts = 0;
 int main(void)
 {
 	ACSR |= 0x80;			// Выключим не нужный, но включеный по умолчанию аналоговый компаратор
-  DDRC  = 0b01110100;    // 7-н, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-н, 2-ТЭН, 1-н, 0-н
+  DDRC  = 0b11110100;    // 7-н, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-н, 2-ТЭН, 1-н, 0-н
   PORTC = 0b01100000;
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111000;
-//  DDRB  = 0b10111010;    // 7-LCD_CLK, 6-LCD_BUSY, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
-  DDRB  = 0b00001010;    // 7-4 - н, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
+  DDRB  = 0b11111010;    // 7-LCD_CLK, 6-LCD_DC, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
+//  DDRB  = 0b00001010;    // 7-4 - н, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
   PORTB = 0b00000010;
 	DDRA =  0b00000000;			// 7-1-н, 0 - ADC Vbat
 	PORTA = 0b00000000;
@@ -61,8 +61,8 @@ int main(void)
   eeprom_read_block(&options, (const void*)0x00, sizeof(struct TSettings));
 
 
-//	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
-	if(0) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+//	if(0) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
   	options.FrostFlag = 0;
   	options.PumpWorkFlag = 0;
@@ -96,16 +96,21 @@ int main(void)
     options.localSettingsTimestamp.ss = 0;
 	}
   
-//  Save();
+  //Save();
 
 	if(options.PumpWorkFlag == 1 && options.PumpTimeLeft != 0)		// Если до длительного отключения насос был включен
 	PumpPause = PUMP_RESTART_PAUSE/2;						// На всякий случай подождем ещ половину "паузы перед включением"
     
   uart_init();
+  spi_init();
+ 	_delay_ms(100);      //на момент инициализации SLI_LCD, дисплей должен быть уже включен и готов
+  LCD_init();
   sei();
   
 //  SIM900_SendReport();
-
+	  LCD_clear();
+    LCD_gotoXY(0,0); LCD_writeString(options.OperatorTel);
+    LCD_gotoXY(0,1); LCD_writeString(options.AdminTel);
 
   while (1) 
   {
@@ -132,7 +137,7 @@ int main(void)
         {
           SIM900_GetSettings();                                                       // Скачаем и примем их
         }
-        strcpy(str, "");
+        strcpy(str, "1-");
         itoa(options.PumpWorkDuration ,buf, 10); strcat(str, buf); strcat(str, " ");
         itoa(options.PumpRelaxDuration ,buf, 10); strcat(str, buf); strcat(str, " ");
         itoa(options.HeaterOnTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
@@ -148,7 +153,7 @@ int main(void)
         strcat(str, options.AdminTel);
         uart_send(str);
         _delay_ms(1000);
-//        SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
+        SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
 //        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
     }    

@@ -132,6 +132,12 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="3310_routines.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="3310_routines.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="avrlibdefs.h">
       <SubType>compile</SubType>
     </Compile>
@@ -145,12 +151,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="SIM900.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="SPI2TWI.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="SPI2TWI.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.c">
