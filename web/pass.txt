@@ -1,3 +1,13 @@
-name u435400245_mermn
-user u435400245_mrnus
-pass tWm7D7Cg56GCv
+Учетка на 000webhost.com
+	Логин drumir@mail.ru
+	пароль s2dNr.2HBZHShKp
+
+Учетка сайта merman
+	Логин vodyanoy
+	пароль uVr1QgKL%Y(QloDosEFx
+
+
+БД
+	Имя bd	id13099454_bd
+	пользователь user id13099454_user
+	пароль acauLaXa+YsJET7K

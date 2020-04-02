@@ -3,7 +3,7 @@
 |  Copyright (c) 2018 drumir@mail.ru
 |  All rights reserved.
 +-----------------------------------------------------------------------------*/
-var sqlServerAdress = "http://drumir.16mb.com/k/user.php";    
+var sqlServerAdress = "https://vodyanoy.000webhostapp.com/user.php";    
 var lastLinkTime;
 
 window.onload = function() {          //
@@ -42,10 +42,16 @@ function GetStats(){
   });
 }
 
-function cbSqlGetStatsSuccess(data, textStatus) {      // Прочитаем настройки с сервера
+function cbSqlGetStatsSuccess(data, textStatus) {      // Прочитаем статус с сервера
   if(data.status == "success"){   
     
     document.getElementById("p_balance").innerText = data.result[0].balance + " руб.";
+    var voltage = data.result[0].Vbat;
+    voltage /= 200;
+    voltage -= 3.3;
+    voltage /= (4.2-3.3)/100;    
+    voltage = Math.round(voltage*10)/10;
+    document.getElementById("p_vbat").innerText = voltage + "%";
      /*   
   for(i = 0; i < data.result.length; i ++){
     data.result[i].time = new Date(data.result[i].time); 

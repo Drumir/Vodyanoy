@@ -15,8 +15,10 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
       ADMUX  = 0b11000000;		  // 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
       ADCSRA |= 1<<ADSC;		    // Старт преобразования
   	  while (ADCSRA & 0x40);		// Ждем завершения(сброса флага ADSC в 0)
-      State.Vbat = ADC;         // Напряжение = ADC * 200
-      if(State.Vbat < 35*20)
+			uint32_t vLongBat = ADC;
+			vLongBat *= 1024;					// Коррекция измерения
+      State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
+      if(State.Vbat < 32*20)
       {
         SIM900Status = SIM900_BAT_FAIL;
         return;  
@@ -50,11 +52,15 @@ void SIM900_SendStatus(void)
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
   waitAnswer("OK", 20);
+//  uart_send("AT+HTTPSSL=1");
+//  waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
 
   itoa(State.Temp, str, 10);
-  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=wT&t=");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\"");
+  strcat(query, link);
+  strcat(query, "?act=wT&t=");
   strcat(query, str);
   strcat(query, "&vb=");
   itoa(State.Vbat, str, 10);
@@ -127,18 +133,26 @@ void SIM900_WaitRegistration(void)
 //----------------------------------------------------------------
 void SIM900_GetTime(void)
 {
-  if(SIM900Status < SIM900_UP) return;
-  uart_send("AT+CCLK?");  //   uart_send("AT+CCLK=\"18/03/04,13:6:00+12\"");
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); /*dropMessage();*/     // Отбросим ответ
-  Now.yy = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]);
-  Now.MM = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+3);
-  Now.dd = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+6);
-  Now.hh = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+9);
-  Now.mm = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+12);
-  Now.ss = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+15);
-  waitMessage(); dropMessage();     // Отбросим ОК
+	if(SIM900Status < SIM900_UP) return;
+	uart_send("AT+CCLK?");  //		uart_send("AT+CCLK=\"20/04/02,14:43:00+03\"");
+	waitMessage(); dropMessage();     // Отбросим эхо
+	waitMessage(); /*dropMessage();*/     // Отбросим ответ
+	Now.yy = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+8);
+	Now.MM = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+11);
+	Now.dd = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+14);
+	Now.hh = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+17);
+	Now.mm = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+20);
+	Now.ss = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+23);
+	waitMessage(); dropMessage();     // Отбросим ОК
 }
+//----------------------------------------------------------------
+/*void SIM900_SetTime(void)
+{
+	if(SIM900Status < SIM900_UP) return;
+	uart_send("AT+CCLK=\"20/03/31,16:33:00+03\"");
+	waitMessage(); dropMessage();     // Отбросим эхо
+	waitMessage(); dropMessage();     // Отбросим ответ
+}*/
 //----------------------------------------------------------------
 void SIM900_EnableGPRS(void)
 {
@@ -166,7 +180,9 @@ void SIM900_GetBalance(void)
   uart_send("AT+CUSD=1,\"*105*5#\"");         // Запрос баланса  AT+CUSD=1,"*105*5$23"$0d
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим ОК
+  waitMessage(); dropMessage();     // Отбросим ОК
   waitMessage();
+	strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
   State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
   dropMessage();     // Отбросим
 }
@@ -179,7 +195,7 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=gts\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=gts\"");
   uart_send(query);
   waitAnswer("OK", 20);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
@@ -192,12 +208,13 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage(); 
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+44, 2); remoteSettingsTimestamp.yy = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.MM = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+48, 2); remoteSettingsTimestamp.dd = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+50, 2); remoteSettingsTimestamp.hh = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.mm = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+54, 2); remoteSettingsTimestamp.ss = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+49, 2); remoteSettingsTimestamp.MM = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.dd = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+58, 2); remoteSettingsTimestamp.mm = str2int(str);
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(str);
+		strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]+44);
     dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
   }
@@ -215,12 +232,19 @@ void SIM900_SendSettings(void)                    // Отсылает настройки на серве
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=sendSettings\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=sendSettings\"");
   uart_send(query);
   waitAnswer("OK", 20);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
+
+  waitMessage(); dropMessage();     // Отбросим Ответ
+
+  uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+
 }
 //----------------------------------------------------------------
 void SIM900_GetSettings(void)                     // Берет настройки с сервера м применяет их
@@ -231,7 +255,7 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
   waitAnswer("OK", 20);
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
-  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=GetSettings\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=GetSettings\"");
   uart_send(query);
   waitAnswer("OK", 20);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
@@ -314,7 +338,8 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 20);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\"http://drumir.16mb.com/k/r.php?act=sendHistory\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=sendHistory\"");
+
   uart_send(query);
   waitAnswer("OK", 20);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20

@@ -3,7 +3,7 @@
 |  Copyright (c) 2018 drumir@mail.ru
 |  All rights reserved.
 +-----------------------------------------------------------------------------*/
-var sqlServerAdress = "http://drumir.16mb.com/k/user.php";
+var sqlServerAdress = "https://vodyanoy.000webhostapp.com/user.php";
 
 window.onload = function() {          //
 

@@ -4,8 +4,8 @@
   $act = stripslashes($_GET['act']);
   
   $answer = array("status" => "", "result" => array());
-  $db = "u435400245_mermn";
-  $link = mysqli_connect("mysql.hostinger.ru", "u435400245_mrnus", "tWm7D7Cg56GCv", $db);
+  $db = "id13099454_bd";
+  $link = mysqli_connect("localhost", "id13099454_user", "acauLaXa+YsJET7K", $db);
   if(!$link) {
     $answer["status"] = "fail";
     $answer["result"][0] = "Can't connect to MySQL or to $db";
@@ -13,7 +13,7 @@
   }   
   
   if($act == "GetSettings"){
-    $query = "SELECT * FROM `options` WHERE id=1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+    $query = "SELECT * FROM `options` WHERE id=1";    // РџРѕРґСѓРјР°С‚СЊ РѕР± СЌРєСЂР°РЅРёСЂРѕРІР°РЅРёРё СЃ РїРѕРјРѕС‰СЊСЋ mysqli_real_escape_string()
     $result = mysqli_query($link, $query);
     if(!$result){
       $answer["status"] = "fail";
@@ -29,8 +29,8 @@
     }
   }
 
-  if($act == "gts"){      // Get TimeStamp  Вернуть таймштамп настроек
-    $query = "SELECT `timestamp` FROM `options` WHERE id=1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+  if($act == "gts"){      // Get TimeStamp  Р’РµСЂРЅСѓС‚СЊ С‚Р°Р№РјС€С‚Р°РјРї РЅР°СЃС‚СЂРѕРµРє
+    $query = "SELECT `timestamp` FROM `options` WHERE id=1";    // РџРѕРґСѓРјР°С‚СЊ РѕР± СЌРєСЂР°РЅРёСЂРѕРІР°РЅРёРё СЃ РїРѕРјРѕС‰СЊСЋ mysqli_real_escape_string()
     $result = mysqli_query($link, $query);
     if(!$result){
       $answer["status"] = "fail";
@@ -48,8 +48,8 @@
     $temp = stripslashes($_GET['t']); 
     $Vbat = stripslashes($_GET['vb']); 
     $balance = stripslashes($_GET['b']); 
-    $query = "INSERT INTO `temps` (`tt`, `Vbat`) VALUES (" . $temp . "," . $Vbat . ")";    
-    $result1 = mysqli_query ($link, $query);
+    //$query = "INSERT INTO `temps` (`tt`, `Vbat`) VALUES (" . $temp . "," . $Vbat . ")";    
+    //$result1 = mysqli_query ($link, $query);
 
     $query = "UPDATE stats SET balance=".$balance.", Vbat=".$Vbat." WHERE id = 1";
     $result = mysqli_query ($link, $query);

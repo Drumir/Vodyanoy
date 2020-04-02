@@ -24,8 +24,9 @@
 #define MD_MAX_T			    0x05	//  Коррекция максимальной температуры
 #define MD_MIN_T			    0x06	//  Коррекция минимальной температуры
 #define MD_CLEAR			    0x07	//  Сброс настроек или статистики
+#define MD_DEBUG					0x08	//	Отладочная информация
+#define MD_LAST						0x09	//Последнне состояние
 //................
-#define MD_LAST		0x08	//Последнне состояние
 
 #define SIM900_NOTHING        0
 #define SIM900_BAT_FAIL       1
@@ -78,16 +79,18 @@
 #define EVENT_PUMP_CAN_FREEZE				31  // Запуск насоса не разрешен из-за возможной заморозки
 #define EVENT_OTHER									32  // Все остальные события
 
-#define LIGHT_TIME						10		// Время работы подсветки. В сек
+#define LIGHT_TIME						30		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
-#define FIRST_CONNECT_DELAY		40 		// Время в секундах от включения устройства до первой попытки связи с сервером
+#define FIRST_CONNECT_DELAY		5 		// Время в секундах от включения устройства до первой попытки связи с сервером
 
 #define LIGHT_ON	PORTB &= ~(1 << 3)
 #define LIGHT_OFF PORTB |= (1 << 3)
 
 #define RXBUFMAXSIZE 300
 #define RXBUFSTRCOUNT 6
+
+#define SERVER_ADDRES 
 
 FIFO( 128 ) uart_tx_fifo;
 
@@ -178,6 +181,7 @@ void SIM900_PowerOn(void);
 void SIM900_PowerOff(void);
 void SIM900_WaitRegistration(void);
 void SIM900_GetTime(void);
+void SIM900_SetTime(void);
 void SIM900_EnableGPRS(void);
 void SIM900_CheckHTTP(void);
 void SIM900_PrepareConnection(void);
@@ -208,6 +212,8 @@ struct TSettings options;     // А не сделать ли их volatile ?!??!!?
 char istr[23];		// Буфер для использования в прерываниях
 char query[100];  // Текстовый буфер для формирования Http запросов.
 char buf[23], str[100];
+char DebugStr[35];
 
+static const char link[] PROGMEM = "vodyanoy.000webhostapp.com/r.php";
 
 #endif  // VODYANOY20_H

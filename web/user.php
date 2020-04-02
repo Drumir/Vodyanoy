@@ -1,17 +1,17 @@
-﻿<?php                                                    
+<?php
   header('Access-Control-Allow-Origin: *');        
   error_reporting(0);                       // 
   $act = stripslashes($_POST['action']);
   
   $answer = array("status" => "", "result" => array());
-  $db = "u435400245_mermn";
-  $link = mysqli_connect("mysql.hostinger.ru", "u435400245_mrnus", "tWm7D7Cg56GCv", $db);
+  $db = "id13099454_bd";
+  $link = mysqli_connect("localhost", "id13099454_user", "acauLaXa+YsJET7K", $db);
   if(!$link) {
     $answer["status"] = "fail";
     $answer["result"][0] = "Can't connect to MySQL or to $db";
     exit(json_encode($answer));
   }   
-  
+
   if($act == "readSettings"){
     $query = "SELECT * FROM `options` WHERE id=1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
     $result = mysqli_query($link, $query);
@@ -99,7 +99,6 @@
     $operator_number = stripslashes($_POST['operator_number']);
     $admin_number = stripslashes($_POST['admin_number']);
     $timestamp = stripslashes($_POST['timestamp']);
-    
     $query = "UPDATE options SET pump_work=".$pump_work.", pump_idle=".$pump_idle.", min_temp=".$min_temp.", max_temp=".$max_temp.", report_interval=".$report_interval.", cold_warning=".$cold_warning.", cold_warning_temp=".$cold_warning_temp.", warm_warning=".$warm_warning.", warm_warning_temp=".$warm_warning_temp.", door_warning=".$door_warning.", flooding_warning=".$flooding_warning.", power_warning=".$power_warning.", power_rest_warning=".$power_rest_warning.", offline_warning=".$offline_warning.", offline_warning_duration=".$offline_warning_duration.", balance_warning=".$balance_warning.", balance_warning_summ=".$balance_warning_summ.", daily_report=".$daily_report.", daily_report_time=".$daily_report_time.", operator_number=".$operator_number.", admin_number=".$admin_number.", timestamp=".$timestamp." WHERE id = 1";
     //$query = "UPDATE options SET pump_work=".$pump_work.", pump_idle=".$pump_idle.", cold_warning=".$cold_warning.", warm_warning=".$warm_warning.", door_warning=".$door_warning.", flooding_warning=".$flooding_warning.", power_warning=".$power_warning.", power_rest_warning=".$power_rest_warning.", offline_warning=".$offline_warning.", balance_warning=".$balance_warning.", daily_report=".$daily_report.", operator_number=".$operator_number.", admin_number=".$admin_number." WHERE id = 1";
     $result = mysqli_query ($link, $query);
@@ -119,4 +118,4 @@
 
   echo json_encode($answer);
   mysqli_close($link);
-		
+?>
