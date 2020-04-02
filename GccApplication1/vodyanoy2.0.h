@@ -203,7 +203,8 @@ uint16_t				PumpPause,			    // Задержка перед повторным включением насоса в сек
 volatile uint32_t	SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
 
 int8_t					MenuMode,			  // Номер текущего режима меню
-                SIM900Status;   // Cостояние связи
+                SIM900Status,   // Cостояние связи
+								settingsWasChanged; // Флаг несохраненных настроек
                 
 struct TTime Now, remoteSettingsTimestamp;
 volatile struct TRXB rx;

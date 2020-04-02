@@ -116,7 +116,7 @@ int main(void)
   {
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
-      SilentLeft = 300;    // Следующий сеанс связи через 5 минут
+      SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через 5 минут
       SIM900_PrepareConnection();
       if(SIM900Status >= SIM900_UP){
         if (Now.yy == 0){
@@ -127,7 +127,8 @@ int main(void)
       }  
        
 //	  uart_send("ATD+79040448302;"); _delay_ms(5000); uart_send("ATH0");
-		SIM900_GetBalance();
+//		SIM900_GetBalance();
+			State.balance = 179;
 
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
@@ -141,23 +142,6 @@ int main(void)
           SIM900_GetSettings();                                                       // Скачаем и примем их
         }
 
-//   SIM900_SendSettings();                                                  // Отошлем их на сервер
-        /*strcpy(str, "1-");
-        itoa(options.PumpWorkDuration ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.PumpRelaxDuration ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.HeaterOnTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.HeaterOffTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.ConnectPeriod ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.FreezeTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.fFreezeNotifications ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.WarmTemp ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.fWarmNotifications ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.fPowerNotifications ,buf, 10); strcat(str, buf); strcat(str, " ");
-        itoa(options.DailyReportTime ,buf, 10); strcat(str, buf); strcat(str, " ");
-        strcat(str, options.OperatorTel); strcat(str, " ");
-        strcat(str, options.AdminTel);
-        uart_send(str);*/
-        _delay_ms(1000);
         SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
 //        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
@@ -210,7 +194,7 @@ void OneMoreSec(void)
   }
 
   if(LightLeft > 0) LightLeft --; 
-  if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; /*Save();*/ MenuMode = MD_STAT;}
+  if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; Save(); MenuMode = MD_STAT;}
 
       // ????????????
   if(PumpPause != 0 && options.PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
@@ -280,6 +264,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	if(options.PumpWorkDuration == 0) options.PumpWorkDuration = 420;
       	else options.PumpWorkDuration -= DELTA_TIME;
+				settingsWasChanged = 1;
       	DrawMenu();
       	break;
     	}
@@ -287,6 +272,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	if(options.PumpRelaxDuration == 0) options.PumpRelaxDuration = 2160;
       	else options.PumpRelaxDuration -= DELTA_TIME;
+				settingsWasChanged = 1;
       	DrawMenu();
       	break;
     	}
@@ -295,6 +281,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	if(options.HeaterOnTemp > 0) options.HeaterOnTemp --;
       	DrawMenu();
+				settingsWasChanged = 1;
       	break;
     	}
 
@@ -302,6 +289,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	if(options.HeaterOffTemp-1 > options.HeaterOnTemp) options.HeaterOffTemp --;
       	DrawMenu();
+				settingsWasChanged = 1;
       	break;
     	}
     	case MD_STAT:
@@ -335,6 +323,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	options.PumpWorkDuration += DELTA_TIME;
       	if(options.PumpWorkDuration > 420) options.PumpWorkDuration = 0;
+				settingsWasChanged = 1;
       	DrawMenu();
       	break;
     	}
@@ -342,6 +331,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	options.PumpRelaxDuration += DELTA_TIME;
       	if(options.PumpRelaxDuration > 2160) options.PumpRelaxDuration = 0;
+				settingsWasChanged = 1;
       	DrawMenu();
       	break;
     	}
@@ -350,6 +340,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	if(options.HeaterOnTemp+1 < options.HeaterOffTemp) options.HeaterOnTemp ++;
       	DrawMenu();
+				settingsWasChanged = 1;
       	break;
     	}
 
@@ -357,6 +348,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	if(options.HeaterOffTemp < 20) options.HeaterOffTemp ++;			//Временно для тестов. Исправить на 10С-15С
       	DrawMenu();
+				settingsWasChanged = 1;
       	break;
     	}
     	case MD_STAT:
@@ -367,8 +359,9 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	{
       	options.PumpRelaxDuration = 0;
       	options.PumpWorkDuration = 0;
-      	options.HeaterOffTemp = 15;
+      	options.HeaterOffTemp = 10;
       	options.HeaterOnTemp = 5;
+				settingsWasChanged = 1;
       	Save();
       	options.PumpTimeLeft = 0;
       	PumpStop();
@@ -561,11 +554,14 @@ int16_t str2int(char* str)
 void Save(void)
 {
   if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длительность работы или отдыха насоса
-
 //  if((uint16_t)eeprom_read_word((uint16_t *)0x0000) == 0 && PumpRelaxDuration != 0) PumpTimeLeft = PumpRelaxDuration; //PumpStop();		Что-то тут непонятное........
-	options.localSettingsTimestamp.yy = Now.yy; options.localSettingsTimestamp.MM = Now.MM; options.localSettingsTimestamp.dd = Now.dd;
-	options.localSettingsTimestamp.hh = Now.hh; options.localSettingsTimestamp.mm = Now.mm; options.localSettingsTimestamp.ss = Now.ss;
-  eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));
+
+	if(settingsWasChanged){
+		options.localSettingsTimestamp.yy = Now.yy; options.localSettingsTimestamp.MM = Now.MM; options.localSettingsTimestamp.dd = Now.dd;
+		options.localSettingsTimestamp.hh = Now.hh; options.localSettingsTimestamp.mm = Now.mm; options.localSettingsTimestamp.ss = Now.ss;
+		eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));
+		settingsWasChanged = 0;
+	}
 }
 //---------------------------------------------------------------------
 void PumpStop(void)
@@ -671,13 +667,17 @@ void DrawMenu(void)
 			LCD_gotoXY(0, 0);LCD_writeStringInv("    DEBUG     ");
 			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, str, 10); strcat(buf, str); strcat(buf, "V");
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
-			itoa(Now.yy, buf, 10); strcat(buf, "/"); itoa(Now.MM, str, 10); strcat(buf, str); strcat(buf, "/"); itoa(Now.dd, str, 10); strcat(buf, str); strcat(buf, " ");
+
+			strcpy(buf, "N");
+			itoa(Now.yy, str, 10); strcat(buf, str); itoa(Now.MM, str, 10); strcat(buf, str);itoa(Now.dd, str, 10); strcat(buf, str); strcat(buf, " ");
 			itoa(Now.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.ss, str, 10); strcat(buf, str);
 			LCD_gotoXY(0, 2);LCD_writeString(buf);
-			itoa(remoteSettingsTimestamp.yy, buf, 10); strcat(buf, "/"); itoa(remoteSettingsTimestamp.MM, str, 10); strcat(buf, str); strcat(buf, "/"); itoa(remoteSettingsTimestamp.dd, str, 10); strcat(buf, str); strcat(buf, " ");
+			strcpy(buf, "R");
+			itoa(remoteSettingsTimestamp.yy, str, 10); strcat(buf, str); itoa(remoteSettingsTimestamp.MM, str, 10); strcat(buf, str); itoa(remoteSettingsTimestamp.dd, str, 10); strcat(buf, str); strcat(buf, " ");
 			itoa(remoteSettingsTimestamp.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(remoteSettingsTimestamp.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(remoteSettingsTimestamp.ss, str, 10); strcat(buf, str);
 			LCD_gotoXY(0, 3);LCD_writeString(buf);
-			itoa(options.localSettingsTimestamp.yy, buf, 10); strcat(buf, "/"); itoa(options.localSettingsTimestamp.MM, str, 10); strcat(buf, str); strcat(buf, "/"); itoa(options.localSettingsTimestamp.dd, str, 10); strcat(buf, str); strcat(buf, " ");
+			strcpy(buf, "L");
+			itoa(options.localSettingsTimestamp.yy, str, 10); strcat(buf, str); itoa(options.localSettingsTimestamp.MM, str, 10); strcat(buf, str); itoa(options.localSettingsTimestamp.dd, str, 10); strcat(buf, str); strcat(buf, " ");
 			itoa(options.localSettingsTimestamp.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, str, 10); strcat(buf, str);
 			LCD_gotoXY(0, 4);LCD_writeString(buf);
 
@@ -721,10 +721,9 @@ void ShowStat(void)
 		LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение если есть
 	}
 
-	strcpy(buf, "до связи");
-	itoa(SilentLeft, str, 10);
-	strcat(buf, str);
-	strcat(buf, "cek");
+	
+	itoa(SilentLeft/60, buf, 10);
+	strcat(buf, "min");
 	LCD_gotoXY(0, 4); LCD_writeString(buf);
 	strcpy(buf, "SIM900Stat ");
 	itoa(SIM900Status, str, 10);
@@ -735,7 +734,7 @@ void ShowStat(void)
 
 	itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, str, 10); strcat(buf, str); strcat(buf, "V");
 	LCD_gotoXY(0, 2);LCD_writeString(buf);
-	itoa(Now.yy, buf, 10); strcat(buf, "/"); itoa(Now.MM, str, 10); strcat(buf, str); strcat(buf, "/"); itoa(Now.dd, str, 10); strcat(buf, str); strcat(buf, " ");
+	itoa(Now.yy, buf, 10); itoa(Now.MM, str, 10); strcat(buf, str); itoa(Now.dd, str, 10); strcat(buf, str); strcat(buf, " ");
 	itoa(Now.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.ss, str, 10); strcat(buf, str);
 	LCD_gotoXY(0, 3);LCD_writeString(buf);
 
