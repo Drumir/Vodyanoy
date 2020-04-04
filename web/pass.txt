@@ -7,7 +7,7 @@
 	пароль uVr1QgKL%Y(QloDosEFx
 
 
-БД
+БД, phpMyAdmin
 	Имя bd	id13099454_bd
 	пользователь user id13099454_user
 	пароль acauLaXa+YsJET7K

@@ -29,6 +29,18 @@
     }
   }
 
+  if($act == "getSrvTime"){      // Get Server Time  Вернуть текущее время сервера
+    $result = date ("y m d,H:i:s");
+    if(!$result){
+      $answer["status"] = "fail";
+      $answer["result"] = "getSrvTime error"; 
+    }                
+    else {
+      $answer["status"] = "success";
+      $answer["result"] = $result; 
+    }
+  }
+
   if($act == "gts"){      // Get TimeStamp  Вернуть таймштамп настроек
     $query = "SELECT `timestamp` FROM `options` WHERE id=1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
     $result = mysqli_query($link, $query);
@@ -48,11 +60,11 @@
     $temp = stripslashes($_GET['t']); 
     $Vbat = stripslashes($_GET['vb']); 
     $balance = stripslashes($_GET['b']); 
-    //$query = "INSERT INTO `temps` (`tt`, `Vbat`) VALUES (" . $temp . "," . $Vbat . ")";    
-    //$result1 = mysqli_query ($link, $query);
-
-    $query = "UPDATE stats SET balance=".$balance.", Vbat=".$Vbat.", temp=".$temp." WHERE id = 1";
+    $query = "INSERT INTO stats (balance, Vbat, temp) VALUES (".$balance.", ".$Vbat.", ".$temp.")";    
     $result = mysqli_query ($link, $query);
+
+    //$query = "UPDATE stats SET balance=".$balance.", Vbat=".$Vbat.", temp=".$temp." WHERE id = 1";
+    //$result = mysqli_query ($link, $query);
     if(!$result){
       $answer["status"] = "fail";
       $answer["result"][0] = mysqli_error($link); 

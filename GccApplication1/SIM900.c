@@ -146,13 +146,43 @@ void SIM900_GetTime(void)
 	waitMessage(); dropMessage();     // Отбросим ОК
 }
 //----------------------------------------------------------------
-/*void SIM900_SetTime(void)
+void SIM900_SetTimeFromServer(void)
 {
-	if(SIM900Status < SIM900_UP) return;
-	uart_send("AT+CCLK=\"20/03/31,16:33:00+03\"");
+  if(SIM900Status < SIM900_GPRS_OK) return;
+  uart_send("AT+HTTPINIT");
+  waitAnswer("OK", 20);
+  uart_send("AT+HTTPPARA=\"CID\",1");
+  waitAnswer("OK", 20);
+
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=getSrvTime\"");
+  uart_send(query);
+  waitAnswer("OK", 20);
+  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitMessage();
+  if(str2int((char*)rx.buf+rx.ptrs[0]+14) == 200){  // Если сервер вернул правильный статус запроса
+	  dropMessage();     // Отбросим ответ сервера
+	  uart_send("AT+HTTPREAD=0,128");
+	  waitMessage(); dropMessage();     // Отбросим эхо
+	  waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
+	  waitMessage();																// {"status":"success","result":"20 04 04,10:05:33"}
+		strcpy(str, "AT+CCLK=\"");
+	  strncpy(str+9, (char*)rx.buf+rx.ptrs[0]+30, 17);
+		str[11] = '/'; str[14] = '/';
+		strcat(str, "+03\"");
+
+	  dropMessage();     // Отбросим прочитанное
+	  waitMessage(); dropMessage();     // Отбросим "ОК"
+  }
+  dropMessage();
+  uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "ОК"
+	uart_send(str);
 	waitMessage(); dropMessage();     // Отбросим эхо
-	waitMessage(); dropMessage();     // Отбросим ответ
-}*/
+	waitMessage(); dropMessage();     // Отбросим ответ 
+}
 //----------------------------------------------------------------
 void SIM900_EnableGPRS(void)
 {
@@ -211,7 +241,7 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(str);
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+49, 2); remoteSettingsTimestamp.MM = str2int(str);
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.dd = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(str) + 3;  // На сервере установлено мировое время
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(str);  // На сервере установлено мировое время
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+58, 2); remoteSettingsTimestamp.mm = str2int(str);
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(str);
 		//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]+44);
@@ -277,7 +307,7 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+32, 2); options.localSettingsTimestamp.yy = str2int(str);
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+35, 2); options.localSettingsTimestamp.MM = str2int(str);
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+38, 2); options.localSettingsTimestamp.dd = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+41, 2); options.localSettingsTimestamp.hh = str2int(str) + 3; // Переведем время в локальное
+    strncpy(str, (char*)rx.buf+rx.ptrs[0]+41, 2); options.localSettingsTimestamp.hh = str2int(str); // Переведем время в локальное
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+44, 2); options.localSettingsTimestamp.mm = str2int(str);
     strncpy(str, (char*)rx.buf+rx.ptrs[0]+47, 2); options.localSettingsTimestamp.ss = str2int(str);  
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
@@ -325,6 +355,10 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
     strncpy((char*)options.AdminTel, (char*)rx.buf+rx.ptrs[0] + ++commaPosition, 10);  
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
     strncpy((char*)options.OperatorTel, (char*)rx.buf+rx.ptrs[0] + ++commaPosition, 10);
+
+		if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длительность работы или отдыха насоса
+		eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));		// Сохраним полученные настройки в EEPROM
+
     dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
   }

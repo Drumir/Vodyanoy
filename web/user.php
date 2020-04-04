@@ -27,7 +27,8 @@
   }
 
   if($act == "getStats"){
-    $query = "SELECT * FROM `stats` WHERE id = 1";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+//    $query = "SELECT * FROM `stats`";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+    $query = "SELECT * FROM stats ORDER BY timestamp DESC LIMIT 1";     // Получить одну (первую) запись из таблицы stats отсортированной по timestamp
     $result = mysqli_query($link, $query);
     if(!$result){
       $answer["status"] = "fail";
@@ -98,8 +99,9 @@
     $daily_report_time = stripslashes($_POST['daily_report_time']);
     $operator_number = stripslashes($_POST['operator_number']);
     $admin_number = stripslashes($_POST['admin_number']);
-    $timestamp = stripslashes($_POST['timestamp']);
-    $query = "UPDATE options SET pump_work=".$pump_work.", pump_idle=".$pump_idle.", min_temp=".$min_temp.", max_temp=".$max_temp.", report_interval=".$report_interval.", cold_warning=".$cold_warning.", cold_warning_temp=".$cold_warning_temp.", warm_warning=".$warm_warning.", warm_warning_temp=".$warm_warning_temp.", door_warning=".$door_warning.", flooding_warning=".$flooding_warning.", power_warning=".$power_warning.", power_rest_warning=".$power_rest_warning.", offline_warning=".$offline_warning.", offline_warning_duration=".$offline_warning_duration.", balance_warning=".$balance_warning.", balance_warning_summ=".$balance_warning_summ.", daily_report=".$daily_report.", daily_report_time=".$daily_report_time.", operator_number=".$operator_number.", admin_number=".$admin_number.", timestamp=".$timestamp." WHERE id = 1";
+  //  $timestamp = stripslashes($_POST['timestamp']);
+    $query = "UPDATE options SET pump_work=".$pump_work.", pump_idle=".$pump_idle.", min_temp=".$min_temp.", max_temp=".$max_temp.", report_interval=".$report_interval.", cold_warning=".$cold_warning.", cold_warning_temp=".$cold_warning_temp.", warm_warning=".$warm_warning.", warm_warning_temp=".$warm_warning_temp.", door_warning=".$door_warning.", flooding_warning=".$flooding_warning.", power_warning=".$power_warning.", power_rest_warning=".$power_rest_warning.", offline_warning=".$offline_warning.", offline_warning_duration=".$offline_warning_duration.", balance_warning=".$balance_warning.", balance_warning_summ=".$balance_warning_summ.", daily_report=".$daily_report.", daily_report_time=".$daily_report_time.", operator_number=".$operator_number.", admin_number=".$admin_number." WHERE id = 1";
+//    $query = "UPDATE options SET pump_work=".$pump_work.", pump_idle=".$pump_idle.", min_temp=".$min_temp.", max_temp=".$max_temp.", report_interval=".$report_interval.", cold_warning=".$cold_warning.", cold_warning_temp=".$cold_warning_temp.", warm_warning=".$warm_warning.", warm_warning_temp=".$warm_warning_temp.", door_warning=".$door_warning.", flooding_warning=".$flooding_warning.", power_warning=".$power_warning.", power_rest_warning=".$power_rest_warning.", offline_warning=".$offline_warning.", offline_warning_duration=".$offline_warning_duration.", balance_warning=".$balance_warning.", balance_warning_summ=".$balance_warning_summ.", daily_report=".$daily_report.", daily_report_time=".$daily_report_time.", operator_number=".$operator_number.", admin_number=".$admin_number.", timestamp=".$timestamp." WHERE id = 1";
     //$query = "UPDATE options SET pump_work=".$pump_work.", pump_idle=".$pump_idle.", cold_warning=".$cold_warning.", warm_warning=".$warm_warning.", door_warning=".$door_warning.", flooding_warning=".$flooding_warning.", power_warning=".$power_warning.", power_rest_warning=".$power_rest_warning.", offline_warning=".$offline_warning.", balance_warning=".$balance_warning.", daily_report=".$daily_report.", operator_number=".$operator_number.", admin_number=".$admin_number." WHERE id = 1";
     $result = mysqli_query ($link, $query);
     if(!$result){

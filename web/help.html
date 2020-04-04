@@ -1,0 +1,32 @@
+<html>
+<head>       
+  <meta charset="utf-8">
+  <title>Водяной 2.0</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+  <script type="text/javascript" src=".\js\help.js"></script> 
+  <script type="text/javascript" src=".\js\jquery-2.0.3.min.js"></script>
+</head>
+<body> 
+  <div id="caption" align="center"><h1>Водяной 2.0</h1></div> 
+      <table style="width:100%;"> 
+        <tr>
+          <td class="topmenu"><a href="index.html">Статус</a></td>
+          <td class="topmenu"><a href="history.html">История</a></td>
+          <td class="topmenu"><a href="options.html">Настройки</a></td>
+          <td class="topmenu" style="background-color:#E4E4E4"><a href="help.html">Помощь</a></td>
+        </tr>
+      </table> 
+      <div id="main" style="width:100%;padding:5;margin:3;">  
+        <div class="block" style="display:inline-block;width:100%">
+          <table style="width:100%;"> 
+            <tr><td><h3> Насос </h3></td></tr>
+            <tr><td>Температура<input type="number" id="temp"></td></tr>
+            <tr><td>Напряжение аккума<input type="number" id="vBat"></td></tr>
+            <tr><td>Баланс<input type="number" id="balance"></td></tr>
+          </table>
+        </div>
+         <button id="sendStats" align="center">Отослать</button> 
+  </div>
+
+</body>
+</html>

@@ -79,7 +79,7 @@ int main(void)
     strcpy((char*)options.AdminTel, "9040448302");  // Номер телефона администратора
   	options.PumpWorkDuration = 120;             // Сколько времени должен работать насос (в минутах)
   	options.PumpRelaxDuration = 240;            // Сколько времени должен отдыхать насос (в минутах)
-    options.ConnectPeriod = 5;                  // Период (в минутах) докладов на сервер. Если 0 - только при необходимости или по звонку
+    options.ConnectPeriod = 10;                  // Период (в минутах) докладов на сервер. Если 0 - только при необходимости или по звонку
     options.DisconnectionTime = 120;            // Длительность отсутствия связи для оповещения о проблемах со связью
     options.MinBalance = 10;                    // Баланс, при достижении которого нужно оповестить о критическом балансе
     options.DailyReportTime = 960;              // Время ежедневного отчета о состоянии (в минутах с начала суток)
@@ -116,7 +116,7 @@ int main(void)
   {
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
-      SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через 5 минут
+      SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
       SIM900_PrepareConnection();
       if(SIM900Status >= SIM900_UP){
         if (Now.yy == 0){
@@ -132,6 +132,8 @@ int main(void)
 
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
+				SIM900_SetTimeFromServer();
+        SIM900_GetTime();              // Перед сеансом связи актуализируем время.
         SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
         if(timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
         {
@@ -692,10 +694,8 @@ void ShowStat(void)
 
   itoa(State.Temp/16, buf, 10);
   strcpy(str, "*C           "); str[0] = 0xBF;
-//  if( PORTD & 0b01000000 ){str[4] = 0xA8;str[5] = 0xA8;}
-//  if( PORTD & 0b10000000 ){str[7] = 0x80;str[8] = 0x81;}
-  if( 1 ){str[4] = 0xA8;str[5] = 0xA8;}
-  if( 1 ){str[7] = 0x80;str[8] = 0x81;}
+  if( PORTC & 0b00000100 ){str[4] = 0xA8;str[5] = 0xA8;}
+  if( PORTC & 0b00010000 ){str[7] = 0x80;str[8] = 0x81;}
   strcat(buf, str);
   LCD_gotoXY(0, 1);	 LCD_writeString(buf);					// Отобразим температуру и состояние обогревателя и насоса
 
@@ -718,25 +718,29 @@ void ShowStat(void)
   }
   if(options.FrostFlag == 1){
 		strcpy(buf, "Возм.заморозка");
-		LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение если есть
 	}
+	LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
 
+	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, str, 10); strcat(buf, str); strcat(buf, "v ");
+	if(SilentLeft >180){
+		itoa(SilentLeft/60, str, 10); strcat(buf, str); strcat(buf, "m");
+	}
+	else {
+		itoa(SilentLeft, str, 10); strcat(buf, str); strcat(buf, "s");
+	}
+	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
 	
-	itoa(SilentLeft/60, buf, 10);
-	strcat(buf, "min");
-	LCD_gotoXY(0, 4); LCD_writeString(buf);
 	strcpy(buf, "SIM900Stat ");
 	itoa(SIM900Status, str, 10);
 	strcat(buf, str);
-	LCD_gotoXY(0, 5); LCD_writeString(buf);
-	itoa(State.balance, buf, 10);
-	LCD_gotoXY(0, 3); LCD_writeString(buf);
+	LCD_gotoXY(0, 4); LCD_writeString(buf);
 
-	itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, str, 10); strcat(buf, str); strcat(buf, "V");
-	LCD_gotoXY(0, 2);LCD_writeString(buf);
-	itoa(Now.yy, buf, 10); itoa(Now.MM, str, 10); strcat(buf, str); itoa(Now.dd, str, 10); strcat(buf, str); strcat(buf, " ");
-	itoa(Now.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.ss, str, 10); strcat(buf, str);
-	LCD_gotoXY(0, 3);LCD_writeString(buf);
+	uint8_t hh, dd = Now.dd;
+	hh = Now.hh + 3;
+	if(hh > 23) {hh -= 24; dd ++;}
+	itoa(Now.yy, buf, 10); itoa(Now.MM, str, 10); strcat(buf, str); itoa(dd, str, 10); strcat(buf, str); strcat(buf, " ");
+	itoa(hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.ss, str, 10); strcat(buf, str);
+	LCD_gotoXY(0, 5);LCD_writeString(buf);				// Отобразим текущее время
 
 	
 

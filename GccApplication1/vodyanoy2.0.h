@@ -181,7 +181,7 @@ void SIM900_PowerOn(void);
 void SIM900_PowerOff(void);
 void SIM900_WaitRegistration(void);
 void SIM900_GetTime(void);
-void SIM900_SetTime(void);
+void SIM900_SetTimeFromServer(void);
 void SIM900_EnableGPRS(void);
 void SIM900_CheckHTTP(void);
 void SIM900_PrepareConnection(void);

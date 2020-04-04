@@ -41,62 +41,62 @@ function cbSqlReadSettingsSuccess(data, textStatus) {      // Прочитаем
 
     document.getElementById('FreezeT').value = data.result[0].cold_warning_temp;
     var bitmask = data.result[0].cold_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsFreeze').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsFreeze').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallFreeze').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallFreeze').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsFreeze').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsFreeze').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallFreeze').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallFreeze').checked = true; }
 
     document.getElementById('WarmT').value = data.result[0].warm_warning_temp;
     bitmask = data.result[0].warm_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsWarm').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsWarm').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallWarm').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallWarm').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsWarm').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsWarm').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallWarm').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallWarm').checked = true; }
 
     bitmask = data.result[0].door_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsDoor').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsDoor').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallDoor').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallDoor').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsDoor').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsDoor').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallDoor').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallDoor').checked = true; }
 
     bitmask = data.result[0].flooding_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsFlood').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsFlood').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallFlood').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallFlood').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsFlood').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsFlood').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallFlood').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallFlood').checked = true; }
 
     bitmask = data.result[0].power_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsPwrFail').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsPwrFail').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallPwrFail').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallPwrFail').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsPwrFail').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsPwrFail').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallPwrFail').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallPwrFail').checked = true; }
 
     bitmask = data.result[0].power_rest_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsPwrRest').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsPwrRest').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallPwrRest').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallPwrRest').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsPwrRest').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsPwrRest').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallPwrRest').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallPwrRest').checked = true; }
 
     document.getElementById('DisconnectionTime').value = data.result[0].offline_warning_duration;
     bitmask = data.result[0].offline_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsNoConn').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsNoConn').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallNoConn').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallNoConn').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsNoConn').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsNoConn').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallNoConn').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallNoConn').checked = true; }
 
     document.getElementById('Balance').value = data.result[0].balance_warning_summ;
     bitmask = data.result[0].balance_warning;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsBalans').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsBalans').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallBalans').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallBalans').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsBalans').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsBalans').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallBalans').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallBalans').checked = true; }
 
     document.getElementById('DailyReport').valueAsNumber = data.result[0].daily_report_time*60000;
     bitmask = data.result[0].daily_report;    
-    if((bitmask & 0b00001000) != 0){ document.getElementById('OpSmsDailyReport').checked = true; }
-    if((bitmask & 0b00000100) != 0){ document.getElementById('AdmSmsDailyReport').checked = true; }
-    if((bitmask & 0b00000010) != 0){ document.getElementById('OpCallDailyReport').checked = true; }
-    if((bitmask & 0b00000001) != 0){ document.getElementById('AdmCallDailyReport').checked = true; }
+    if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsDailyReport').checked = true; }
+    if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsDailyReport').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallDailyReport').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallDailyReport').checked = true; }
 
     document.getElementById('OperatorTel').value = data.result[0].operator_number;
     document.getElementById('AdminTel').value = data.result[0].admin_number;
@@ -184,6 +184,7 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
   params.operator_number = document.getElementById('OperatorTel').value;
   params.admin_number = document.getElementById('AdminTel').value;  
   
+  /*                          // Отныне живем по серверному времени!!!
   var ts = new Date();     
 
   var str = "" + (ts.getFullYear()-2000);
@@ -193,7 +194,8 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
   if(ts.getMinutes() < 10) {str += "0";} str += (ts.getMinutes()); 
   if(ts.getSeconds() < 10) {str += "0";} str += (ts.getSeconds()); 
   
-  params.timestamp = str;
+  params.timestamp = str;    
+  */
   
   params.action = "writeSettings";
   
