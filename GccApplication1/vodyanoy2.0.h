@@ -160,10 +160,12 @@ void PumpStop(void);
 uint8_t PumpStart(void);							// Возвращает 1 если успешно. Иначе 0;
 void HeaterStart(void);
 void HeaterStop(void);
-void OneMoreMin(void);							// Еще одна секунда прошла.
+void OneMoreMin(void);							// Еще одна минута прошла.
+void OneMoreSec(void);							// Еще одна секунда прошла.
 int AdcToVolts(int A);							// Преобразует измеренное АЦП напряжение в Вольты
 void RecToHistory(uint8_t eventCode);
 uint8_t ConnectToServer(void);      // Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
+void Reset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
 
 void incomingMessage(char* s);
 void renewLCD(void);
@@ -204,16 +206,19 @@ volatile uint32_t	SilentLeft;		      // Сколько секунд осталось до попытки связи
 
 int8_t					MenuMode,			  // Номер текущего режима меню
                 SIM900Status,   // Cостояние связи
-								settingsWasChanged; // Флаг несохраненных настроек
+								settingsWasChanged, // Флаг несохраненных настроек
+								OneMoreSecCount;			// Количество секунд еще не обработаных by OneMoreSec(). можно судить о зависании.
                 
 struct TTime Now, remoteSettingsTimestamp;
 volatile struct TRXB rx;
 struct TSettings options;     // А не сделать ли их volatile ?!??!!?
 
-char istr[23];		// Буфер для использования в прерываниях
+char strI[23];		// Буфер для использования в прерываниях
+char strD[23];		// Буфер для использования в выводе на дисплей
+char strS[100];		// Буфер для использования в функциях SIM900
 char query[100];  // Текстовый буфер для формирования Http запросов.
-char buf[23], str[100];
-char DebugStr[35];
+char buf[23];			// Еще один буфер для дисплея
+//char DebugStr[35];
 
 static const char link[] PROGMEM = "vodyanoy.000webhostapp.com/r.php";
 

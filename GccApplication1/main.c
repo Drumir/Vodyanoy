@@ -114,6 +114,8 @@ int main(void)
 //  SIM900_SendReport();
   while (1) 
   {
+	if(OneMoreSecCount > 0){ OneMoreSec();}
+
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
       SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
@@ -174,7 +176,7 @@ void OneMoreMin(void)
 void OneMoreSec(void)
 {
   uint16_t a;
-  sei();
+	OneMoreSecCount --; 
   Seconds ++;
   Now.ss ++; 
   if (Now.ss == 60)
@@ -316,7 +318,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
     	case MD_DIRPUMP:				// Включить насос вручную
     	{
       	LCD_gotoXY(0, 3);
-      	if(PumpStart() == 0) LCD_writeStringInv(str);	//Если старт насоса вернул ошибку - отобразить её
+      	if(PumpStart() == 0) LCD_writeStringInv(strD);	//Если старт насоса вернул ошибку - отобразить её
       	else { LCD_writeString("  Включено    ");}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
       	break;
     	}
@@ -403,7 +405,9 @@ ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц
   if(Tacts == 10 )		// (8 000 000 / 256) / 3125 = 10
   {
     Tacts = 0;
-    OneMoreSec();
+		OneMoreSecCount ++;
+		if(OneMoreSecCount > 60) Reset();
+//    OneMoreSec();
   }
 }
 //----------------------------------------------------------------
@@ -442,6 +446,11 @@ ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
   	else
   	rx.wptr = nextwptr;
 	}
+}
+//----------------------------------------------------------------
+void Reset(void)
+{
+
 }
 //----------------------------------------------------------------
 void uart_init( void )
@@ -576,9 +585,9 @@ void PumpStop(void)
 //---------------------------------------------------------------------
 uint8_t PumpStart(void)
 {
-  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(str, "Нет расписания"); return 0;}
-  if(options.FrostFlag == 1){strcpy(str, "Возм.заморозка"); return 0;}
-  if(PumpPause > 0){ strcpy(str, "Пауза "); itoa(PumpPause/10, buf, 10); strcat(str, buf); strcat(str, " сек   ");return 0;}
+  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return 0;}
+  if(options.FrostFlag == 1){strcpy(strD, "Возм.заморозка"); return 0;}
+  if(PumpPause > 0){ strcpy(strD, "Пауза "); itoa(PumpPause/10, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return 0;}
   options.PumpTimeLeft = options.PumpWorkDuration;
   CheckUPause = 20;		// 2 секунды не проверять питающее напряжение!
   options.PumpWorkFlag = 1;
@@ -638,7 +647,7 @@ void DrawMenu(void)
       LCD_gotoXY(0, 0);LCD_writeStringInv(" Насос.Распис ");
       LCD_gotoXY(0, 1);	LCD_writeString(" Работ  Стоит ");
       LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
-      LCD_gotoXY(0, 3);MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, str);strcat(buf, str);LCD_writeString(buf);
+      LCD_gotoXY(0, 3);MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, strD);strcat(buf, strD);LCD_writeString(buf);
       LCD_gotoXY(0, 4);		strcpy(buf, "              "); buf[x] = 0xAC; LCD_writeString(buf);
       break;
     }
@@ -649,7 +658,7 @@ void DrawMenu(void)
       LCD_gotoXY(0, 0);LCD_writeStringInv("Обогрев.Распис");
       LCD_gotoXY(0, 1);	LCD_writeString("  ВКЛ   ВыКЛ  ");
       LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
-      itoa(options.HeaterOnTemp, buf+2, 10); strcpy(str, "*C    "); str[0] = 0xBF; strcat(buf, str); itoa(options.HeaterOffTemp, str, 10); strcat(buf, str); strcpy(str, "*C   ");str[0] = 0xBF; strcat(buf, str);
+      itoa(options.HeaterOnTemp, buf+2, 10); strcpy(strD, "*C    "); strD[0] = 0xBF; strcat(buf, strD); itoa(options.HeaterOffTemp, strD, 10); strcat(buf, strD); strcpy(strD, "*C   ");strD[0] = 0xBF; strcat(buf, strD);
       LCD_gotoXY(0, 3);	LCD_writeString(buf);
       LCD_gotoXY(0, 4);		strcpy(buf, "              "); buf[x] = 0xAC; LCD_writeString(buf);
       break;
@@ -667,20 +676,20 @@ void DrawMenu(void)
 		case MD_DEBUG:
 		{
 			LCD_gotoXY(0, 0);LCD_writeStringInv("    DEBUG     ");
-			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, str, 10); strcat(buf, str); strcat(buf, "V");
+			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, strD, 10); strcat(buf, strD); strcat(buf, "V");
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
 
 			strcpy(buf, "N");
-			itoa(Now.yy, str, 10); strcat(buf, str); itoa(Now.MM, str, 10); strcat(buf, str);itoa(Now.dd, str, 10); strcat(buf, str); strcat(buf, " ");
-			itoa(Now.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.ss, str, 10); strcat(buf, str);
+			itoa(Now.yy, strD, 10); strcat(buf, strD); itoa(Now.MM, strD, 10); strcat(buf, strD);itoa(Now.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+			itoa(Now.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 2);LCD_writeString(buf);
 			strcpy(buf, "R");
-			itoa(remoteSettingsTimestamp.yy, str, 10); strcat(buf, str); itoa(remoteSettingsTimestamp.MM, str, 10); strcat(buf, str); itoa(remoteSettingsTimestamp.dd, str, 10); strcat(buf, str); strcat(buf, " ");
-			itoa(remoteSettingsTimestamp.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(remoteSettingsTimestamp.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(remoteSettingsTimestamp.ss, str, 10); strcat(buf, str);
+			itoa(remoteSettingsTimestamp.yy, strD, 10); strcat(buf, strD); itoa(remoteSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(remoteSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+			itoa(remoteSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(remoteSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(remoteSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 3);LCD_writeString(buf);
 			strcpy(buf, "L");
-			itoa(options.localSettingsTimestamp.yy, str, 10); strcat(buf, str); itoa(options.localSettingsTimestamp.MM, str, 10); strcat(buf, str); itoa(options.localSettingsTimestamp.dd, str, 10); strcat(buf, str); strcat(buf, " ");
-			itoa(options.localSettingsTimestamp.hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, str, 10); strcat(buf, str);
+			itoa(options.localSettingsTimestamp.yy, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+			itoa(options.localSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 4);LCD_writeString(buf);
 
 		}
@@ -693,10 +702,10 @@ void ShowStat(void)
   LCD_gotoXY(0, 0); LCD_writeStringInv("  Статистика  ");		// Отобразим заголовок
 
   itoa(State.Temp/16, buf, 10);
-  strcpy(str, "*C           "); str[0] = 0xBF;
-  if( PORTC & 0b00000100 ){str[4] = 0xA8;str[5] = 0xA8;}
-  if( PORTC & 0b00010000 ){str[7] = 0x80;str[8] = 0x81;}
-  strcat(buf, str);
+  strcpy(strD, "*C           "); strD[0] = 0xBF;
+  if( PORTC & 0b00000100 ){strD[4] = 0xA8;strD[5] = 0xA8;}
+  if( PORTC & 0b00010000 ){strD[7] = 0x80;strD[8] = 0x81;}
+  strcat(buf, strD);
   LCD_gotoXY(0, 1);	 LCD_writeString(buf);					// Отобразим температуру и состояние обогревателя и насоса
 
   if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0)
@@ -705,15 +714,15 @@ void ShowStat(void)
   {
     MinToStr(options.PumpTimeLeft, buf);
     strcat(buf, " до ");
-    options.PumpWorkFlag == 1 ? strcpy(str, "вЫк       ") : strcpy(str, "вкл      ");
-    str[3] = 0x80; str[4] = 0x81;
-    strcat(buf, str);
+    options.PumpWorkFlag == 1 ? strcpy(strD, "вЫк       ") : strcpy(strD, "вкл      ");
+    strD[3] = 0x80; strD[4] = 0x81;
+    strcat(buf, strD);
   }
   if(PumpPause != 0 && options.PumpWorkFlag == 1)
   {
     strcpy(buf, "Пауза ");
-    itoa(PumpPause/10, str, 10);
-    strcat(buf, str);
+    itoa(PumpPause/10, strD, 10);
+    strcat(buf, strD);
     strcat(buf, " сек.   ");
   }
   if(options.FrostFlag == 1){
@@ -721,25 +730,25 @@ void ShowStat(void)
 	}
 	LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
 
-	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, str, 10); strcat(buf, str); strcat(buf, "v ");
+	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, strD, 10); strcat(buf, strD); strcat(buf, "v ");
 	if(SilentLeft >180){
-		itoa(SilentLeft/60, str, 10); strcat(buf, str); strcat(buf, "m");
+		itoa(SilentLeft/60, strD, 10); strcat(buf, strD); strcat(buf, "m");
 	}
 	else {
-		itoa(SilentLeft, str, 10); strcat(buf, str); strcat(buf, "s");
+		itoa(SilentLeft, strD, 10); strcat(buf, strD); strcat(buf, "s");
 	}
 	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
 	
 	strcpy(buf, "SIM900Stat ");
-	itoa(SIM900Status, str, 10);
-	strcat(buf, str);
+	itoa(SIM900Status, strD, 10);
+	strcat(buf, strD);
 	LCD_gotoXY(0, 4); LCD_writeString(buf);
 
 	uint8_t hh, dd = Now.dd;
 	hh = Now.hh + 3;
 	if(hh > 23) {hh -= 24; dd ++;}
-	itoa(Now.yy, buf, 10); itoa(Now.MM, str, 10); strcat(buf, str); itoa(dd, str, 10); strcat(buf, str); strcat(buf, " ");
-	itoa(hh, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.mm, str, 10); strcat(buf, str); strcat(buf, ":"); itoa(Now.ss, str, 10); strcat(buf, str);
+	itoa(Now.yy, buf, 10); itoa(Now.MM, strD, 10); strcat(buf, strD); itoa(dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+	itoa(hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.ss, strD, 10); strcat(buf, strD);
 	LCD_gotoXY(0, 5);LCD_writeString(buf);				// Отобразим текущее время
 
 	

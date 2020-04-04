@@ -51,26 +51,26 @@ void SIM900_SendStatus(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
 //  uart_send("AT+HTTPSSL=1");
-//  waitAnswer("OK", 20);
+//  waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
 
-  itoa(State.Temp, str, 10);
+  itoa(State.Temp, strS, 10);
   strcpy(query, "AT+HTTPPARA=\"URL\",\"");
   strcat(query, link);
   strcat(query, "?act=wT&t=");
-  strcat(query, str);
+  strcat(query, strS);
   strcat(query, "&vb=");
-  itoa(State.Vbat, str, 10);
-  strcat(query, str);
+  itoa(State.Vbat, strS, 10);
+  strcat(query, strS);
   strcat(query, "&b=");
-  itoa(State.balance, str, 10);
-  strcat(query, str);
+  itoa(State.balance, strS, 10);
+  strcat(query, strS);
   strcat(query, "\"");
   uart_send(query);
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -150,13 +150,13 @@ void SIM900_SetTimeFromServer(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=getSrvTime\"");
   uart_send(query);
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -167,10 +167,10 @@ void SIM900_SetTimeFromServer(void)
 	  waitMessage(); dropMessage();     // Отбросим эхо
 	  waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
 	  waitMessage();																// {"status":"success","result":"20 04 04,10:05:33"}
-		strcpy(str, "AT+CCLK=\"");
-	  strncpy(str+9, (char*)rx.buf+rx.ptrs[0]+30, 17);
-		str[11] = '/'; str[14] = '/';
-		strcat(str, "+03\"");
+		strcpy(strS, "AT+CCLK=\"");
+	  strncpy(strS+9, (char*)rx.buf+rx.ptrs[0]+30, 17);
+		strS[11] = '/'; strS[14] = '/';
+		strcat(strS, "+03\"");
 
 	  dropMessage();     // Отбросим прочитанное
 	  waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -179,7 +179,7 @@ void SIM900_SetTimeFromServer(void)
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
-	uart_send(str);
+	uart_send(strS);
 	waitMessage(); dropMessage();     // Отбросим эхо
 	waitMessage(); dropMessage();     // Отбросим ответ 
 }
@@ -191,13 +191,13 @@ void SIM900_EnableGPRS(void)
   SIM900Status = SIM900_REG_GPRS;
   
   //    Эти настройки УЖЕ сохранены в энергонезависимой памяти модуля
-  //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitAnswer("OK", 20);uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitAnswer("OK", 20);
-  //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 20);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 20);
+  //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitAnswer("OK", 60);
+  //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 60);
   do{
     iterations ++;
     _delay_ms(500);
     uart_send("AT+SAPBR=1,1");
-  } while(waitAnswer("OK", 20) != 1 && iterations < 30);
+  } while(waitAnswer("OK", 60) != 1 && iterations < 30);
   SIM900Status = SIM900_GPRS_OK;
   if(iterations == 30) SIM900Status = SIM900_GPRS_FAIL;
   
@@ -212,7 +212,7 @@ void SIM900_GetBalance(void)
   waitMessage(); dropMessage();     // Отбросим ОК
   waitMessage(); dropMessage();     // Отбросим ОК
   waitMessage();
-	strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
+	//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
   State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
   dropMessage();     // Отбросим
 }
@@ -221,13 +221,13 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=gts\"");
   uart_send(query);
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -238,12 +238,12 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage(); 
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+49, 2); remoteSettingsTimestamp.MM = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.dd = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(str);  // На сервере установлено мировое время
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+58, 2); remoteSettingsTimestamp.mm = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(str);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+49, 2); remoteSettingsTimestamp.MM = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.dd = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(strS);  // На сервере установлено мировое время
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+58, 2); remoteSettingsTimestamp.mm = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(strS);
 		//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]+44);
     dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -258,19 +258,19 @@ void SIM900_SendSettings(void)                    // Отсылает настройки на серве
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=wS&pump1="); // Write Settings
-  itoa(options.PumpWorkDuration, str, 10); strcat(query, str); strcat(query, "&pump0=");
-  itoa(options.PumpRelaxDuration, str, 10); strcat(query, str); strcat(query, "&mint=");
-  itoa(options.HeaterOnTemp, str, 10); strcat(query, str); strcat(query, "&maxt=");
-  itoa(options.HeaterOffTemp, str, 10); strcat(query, str); strcat(query, "\"");
+  itoa(options.PumpWorkDuration, strS, 10); strcat(query, strS); strcat(query, "&pump0=");
+  itoa(options.PumpRelaxDuration, strS, 10); strcat(query, strS); strcat(query, "&mint=");
+  itoa(options.HeaterOnTemp, strS, 10); strcat(query, strS); strcat(query, "&maxt=");
+  itoa(options.HeaterOffTemp, strS, 10); strcat(query, strS); strcat(query, "\"");
 
   uart_send(query);
 
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -288,12 +288,12 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
   uint16_t commaPosition = 0;
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=GetSettings\"");
   uart_send(query);
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -304,12 +304,12 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage();                    // {"status":"success","result":"180315230102,120,240,3,10,5,8,-1,8,40,8,8,8,8,8,60,8,20,8,960,9027891301,9040448302"}
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+32, 2); options.localSettingsTimestamp.yy = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+35, 2); options.localSettingsTimestamp.MM = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+38, 2); options.localSettingsTimestamp.dd = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+41, 2); options.localSettingsTimestamp.hh = str2int(str); // Переведем время в локальное
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+44, 2); options.localSettingsTimestamp.mm = str2int(str);
-    strncpy(str, (char*)rx.buf+rx.ptrs[0]+47, 2); options.localSettingsTimestamp.ss = str2int(str);  
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+32, 2); options.localSettingsTimestamp.yy = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+35, 2); options.localSettingsTimestamp.MM = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+38, 2); options.localSettingsTimestamp.dd = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+41, 2); options.localSettingsTimestamp.hh = str2int(strS); // Переведем время в локальное
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+44, 2); options.localSettingsTimestamp.mm = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+47, 2); options.localSettingsTimestamp.ss = str2int(strS);  
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
     commaPosition ++;
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе вторую запятую
@@ -372,14 +372,14 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=sendHistory\"");
 
   uart_send(query);
-  waitAnswer("OK", 20);
+  waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
