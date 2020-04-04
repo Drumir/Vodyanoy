@@ -168,6 +168,7 @@ int AdcToVolts(int A);							// Преобразует измеренное АЦП напряжение в Вольты
 void RecToHistory(uint8_t eventCode);
 uint8_t ConnectToServer(void);      // Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
 void Reset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
+void measureBattery(void);					// Измеряет напряжение аккумулятора, записывает его в state.vBat
 
 void incomingMessage(char* s);
 void renewLCD(void);
@@ -220,6 +221,17 @@ char query[100];  // Текстовый буфер для формирования Http запросов.
 char buf[23];			// Еще один буфер для дисплея
 //char DebugStr[35];
 
-static const char link[] PROGMEM = "vodyanoy.000webhostapp.com/r.php";
-
+static const char link[]							PROGMEM = "vodyanoy.000webhostapp.com/r.php";
+static const char MSG_BatFail[]				PROGMEM = "Battery_FAIL  ";
+static const char MSG_SimFail[]				PROGMEM = "SIM900_FAIL   ";
+static const char MSG_GSMFail[]				PROGMEM = "SIM90_GSM_FAIL";
+static const char MSG_GPRSFail[]			PROGMEM = "SIM9_GPRS_FAIL";
+static const char MSG_HTTPFail[]			PROGMEM = "SIM9_HTTP_FAIL";
+static const char MSG_Loading[]				PROGMEM = "   Загрузка   ";
+static const char MSG_Stat[]					PROGMEM = "  Статистика  ";
+static const char MSG_PumpSchedule[]	PROGMEM = " Насос.Распис ";
+static const char MSG_Reset[]					PROGMEM = "    Сброс     ";
+static const char MSG_HeaterSchedul[] PROGMEM = "Обогрев.Распис";
+static const char MSG_Successful[]		PROGMEM = "   Успешно    ";
+																					
 #endif  // VODYANOY20_H

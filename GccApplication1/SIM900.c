@@ -12,12 +12,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
   switch(SIM900Status){
     case SIM900_NOTHING:  // СИМ900 еще даже не запитана
     {                           // Измерим напряжение на батарее
-      ADMUX  = 0b11000000;		  // 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
-      ADCSRA |= 1<<ADSC;		    // Старт преобразования
-  	  while (ADCSRA & 0x40);		// Ждем завершения(сброса флага ADSC в 0)
-			uint32_t vLongBat = ADC;
-			vLongBat *= 1024;					// Коррекция измерения
-      State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
+			measureBattery();
       if(State.Vbat < 32*20)
       {
         SIM900Status = SIM900_BAT_FAIL;
@@ -32,12 +27,15 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
     case SIM900_UP:
     {
       SIM900_WaitRegistration();
-      if(SIM900Status < SIM900_GSM_OK)
+      if(SIM900Status < SIM900_GSM_OK){
         return;
+			}
     }    
     case SIM900_GSM_OK:
     {
       SIM900_EnableGPRS();
+			if(SIM900Status == SIM900_GPRS_FAIL){
+			}
     }  
     case SIM900_GPRS_OK:
     {
@@ -117,7 +115,7 @@ void SIM900_WaitRegistration(void)
   SIM900Status = SIM900_REG_GSM;
   uint8_t iterations = 0, sucess_flag = 0;
   do{
-    _delay_ms(500);
+    _delay_ms(1500);
     uart_send("AT+CREG?");
     waitMessage();dropMessage();        // Выбрасываем эхо
     waitMessage();
@@ -167,11 +165,8 @@ void SIM900_SetTimeFromServer(void)
 	  waitMessage(); dropMessage();     // Отбросим эхо
 	  waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
 	  waitMessage();																// {"status":"success","result":"20 04 04,10:05:33"}
-		strcpy(strS, "AT+CCLK=\"");
-	  strncpy(strS+9, (char*)rx.buf+rx.ptrs[0]+30, 17);
-		strS[11] = '/'; strS[14] = '/';
-		strcat(strS, "+03\"");
-
+		strcpy(strS, (char*)rx.buf+rx.ptrs[0]+30);		// Сохраним в strS полученное время
+		strS[17] = '\0';
 	  dropMessage();     // Отбросим прочитанное
 	  waitMessage(); dropMessage();     // Отбросим "ОК"
   }
@@ -179,7 +174,12 @@ void SIM900_SetTimeFromServer(void)
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
   waitMessage(); dropMessage();     // Отбросим "ОК"
-	uart_send(strS);
+
+	strcpy(query, "AT+CCLK=\"");
+	strcat(query, strS);
+	strcat(query, "+03\"");
+	query[11] = '/'; query[14] = '/';
+	uart_send(query);
 	waitMessage(); dropMessage();     // Отбросим эхо
 	waitMessage(); dropMessage();     // Отбросим ответ 
 }
@@ -195,7 +195,7 @@ void SIM900_EnableGPRS(void)
   //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 60);
   do{
     iterations ++;
-    _delay_ms(500);
+    _delay_ms(1500);
     uart_send("AT+SAPBR=1,1");
   } while(waitAnswer("OK", 60) != 1 && iterations < 30);
   SIM900Status = SIM900_GPRS_OK;
@@ -304,12 +304,13 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage();                    // {"status":"success","result":"180315230102,120,240,3,10,5,8,-1,8,40,8,8,8,8,8,60,8,20,8,960,9027891301,9040448302"}
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+32, 2); options.localSettingsTimestamp.yy = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+35, 2); options.localSettingsTimestamp.MM = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+38, 2); options.localSettingsTimestamp.dd = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+41, 2); options.localSettingsTimestamp.hh = str2int(strS); // Переведем время в локальное
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+44, 2); options.localSettingsTimestamp.mm = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+47, 2); options.localSettingsTimestamp.ss = str2int(strS);  
+		
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+32, 2); strS[2] = '\0';options.localSettingsTimestamp.yy = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+35, 2); strS[2] = '\0';options.localSettingsTimestamp.MM = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+38, 2); strS[2] = '\0';options.localSettingsTimestamp.dd = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+41, 2); strS[2] = '\0';options.localSettingsTimestamp.hh = str2int(strS); // Переведем время в локальное
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+44, 2); strS[2] = '\0';options.localSettingsTimestamp.mm = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+47, 2); strS[2] = '\0';options.localSettingsTimestamp.ss = str2int(strS);  
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
     commaPosition ++;
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе вторую запятую

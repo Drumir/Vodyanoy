@@ -62,7 +62,7 @@ int main(void)
 
 
 //	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
-	if(0) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(1) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
   	options.FrostFlag = 0;
   	options.PumpWorkFlag = 0;
@@ -108,10 +108,33 @@ int main(void)
   sensor_write(0x44);   // старт измерения температуры
   _delay_ms(1000);
   State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
-
+	measureBattery();
   sei();
-  
-//  SIM900_SendReport();
+	ShowStat();
+
+	LCD_gotoXY(0, 4); LCD_writeString(MSG_Loading);
+  SIM900_PrepareConnection();
+	const char* messageId = MSG_Successful;
+	switch(SIM900Status){
+		case SIM900_BAT_FAIL:		{messageId = MSG_BatFail; break;}
+		case SIM900_FAIL:				{messageId = MSG_SimFail; break;}
+		case SIM900_GSM_FAIL:		{messageId = MSG_GSMFail; break;}
+		case SIM900_GPRS_FAIL:	{messageId = MSG_GPRSFail; break;}
+	}
+	LCD_gotoXY(0, 4); LCD_writeString(messageId);
+
+    if(SIM900Status >= SIM900_UP){
+	    if (Now.yy == 0){
+		    SIM900_GetTime();              // Перед сеансом связи актуализируем время.
+		    RecToHistory(EVENT_START);     // Если сеанс первый - впишем в историю событие старта
+	    }
+	    else SIM900_GetTime();
+    }
+
+	if(SIM900Status >= SIM900_GSM_OK){
+		SIM900_GetBalance();
+	}
+
   while (1) 
   {
 	if(OneMoreSecCount > 0) OneMoreSec();
@@ -120,22 +143,13 @@ int main(void)
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
       SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
-      SIM900_PrepareConnection();
-      if(SIM900Status >= SIM900_UP){
-        if (Now.yy == 0){
-          SIM900_GetTime();              // Перед сеансом связи актуализируем время.
-          RecToHistory(EVENT_START);     // Если сеанс первый - впишем в историю событие старта
-        }         
-        else SIM900_GetTime();              
-      }  
        
 //	  uart_send("ATD+79040448302;"); _delay_ms(5000); uart_send("ATH0");
-//		SIM900_GetBalance();
-			State.balance = 179;
+//			State.balance = 179;
 
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
-				SIM900_SetTimeFromServer();
+				//SIM900_SetTimeFromServer();
         SIM900_GetTime();              // Перед сеансом связи актуализируем время.
         SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
         if(timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
@@ -645,7 +659,7 @@ void DrawMenu(void)
     case MD_PUMPRELAXTIME:
     {
       x = 3; if(MenuMode == MD_PUMPRELAXTIME) x = 10;
-      LCD_gotoXY(0, 0);LCD_writeStringInv(" Насос.Распис ");
+      LCD_gotoXY(0, 0);LCD_writeStringInv(MSG_PumpSchedule);
       LCD_gotoXY(0, 1);	LCD_writeString(" Работ  Стоит ");
       LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
       LCD_gotoXY(0, 3);MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, strD);strcat(buf, strD);LCD_writeString(buf);
@@ -656,7 +670,7 @@ void DrawMenu(void)
     case MD_MAX_T:
     {
       x = 3; if(MenuMode == MD_MAX_T) x = 10;
-      LCD_gotoXY(0, 0);LCD_writeStringInv("Обогрев.Распис");
+      LCD_gotoXY(0, 0);LCD_writeStringInv(MSG_HeaterSchedul);
       LCD_gotoXY(0, 1);	LCD_writeString("  ВКЛ   ВыКЛ  ");
       LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
       itoa(options.HeaterOnTemp, buf+2, 10); strcpy(strD, "*C    "); strD[0] = 0xBF; strcat(buf, strD); itoa(options.HeaterOffTemp, strD, 10); strcat(buf, strD); strcpy(strD, "*C   ");strD[0] = 0xBF; strcat(buf, strD);
@@ -667,7 +681,7 @@ void DrawMenu(void)
     case MD_STAT: { ShowStat(); break;}
     case MD_CLEAR:
     {
-      LCD_gotoXY(0, 0);LCD_writeStringInv("    Сброс     ");
+      LCD_gotoXY(0, 0);LCD_writeStringInv(MSG_Reset);
       LCD_gotoXY(0, 1);LCD_writeStringInv("              ");
       LCD_gotoXY(0, 2);		strcpy(buf, "  настройки   "); buf[1] = 0xAB; buf[12] = 0xAB; LCD_writeString(buf);
       LCD_gotoXY(0, 3);	LCD_writeString("   Сбросить   ");
@@ -700,7 +714,7 @@ void DrawMenu(void)
 void ShowStat(void)
 {
   LCD_clear();
-  LCD_gotoXY(0, 0); LCD_writeStringInv("  Статистика  ");		// Отобразим заголовок
+  LCD_gotoXY(0, 0); LCD_writeStringInv(MSG_Stat);		// Отобразим заголовок
 
   itoa(State.Temp/16, buf, 10);
   strcpy(strD, "*C           "); strD[0] = 0xBF;
@@ -740,11 +754,11 @@ void ShowStat(void)
 	}
 	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
 	
-	strcpy(buf, "SIM900Stat ");
+/*	strcpy(buf, "SIM900Stat ");
 	itoa(SIM900Status, strD, 10);
 	strcat(buf, strD);
 	LCD_gotoXY(0, 4); LCD_writeString(buf);
-
+*/
 	uint8_t hh, dd = Now.dd;
 	hh = Now.hh + 3;
 	if(hh > 23) {hh -= 24; dd ++;}
@@ -781,5 +795,15 @@ void MinToStr(unsigned int Min, char *str)
   str[3] = '0';
   m < 10 ? itoa(m, str+4, 10) : itoa(m, str+3, 10);
   return;
+}
+//---------------------------------------------------------------------
+void measureBattery(void)
+{
+	ADMUX  = 0b11000000;		  // 11 - Опорное напряжение = 2,56В, 0 - выравнивание вправо, 0 - резерв, 0 - резерв, 000 - выбор канала ADC0
+	ADCSRA |= 1<<ADSC;		    // Старт преобразования
+	while (ADCSRA & 0x40);		// Ждем завершения(сброса флага ADSC в 0)
+	uint32_t vLongBat = ADC;
+	vLongBat *= 1024;					// Коррекция измерения
+	State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
 }
 //---------------------------------------------------------------------
