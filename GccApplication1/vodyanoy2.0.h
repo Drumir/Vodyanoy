@@ -133,6 +133,7 @@ struct TSettings {          // Структура для хранения всех сохраняемых в eeprom 
   HeaterOffTemp,			      // Температура включения обогревателя
   FreezeTemp,               // Температура предупреждения о заморозке
   WarmTemp;                 // Температура предупреждения о перегреве
+
   
   struct TTime  localSettingsTimestamp;
 };
@@ -154,6 +155,7 @@ ISR(ADC_vect);          // Завершение преобразования АЦП
 
 void ShowStat(void);
 void MinToStr(uint16_t Min, char *str);		// Переводит количество минут в строку hh:mm
+void OnKeyPress(void);					// Вызывается из главного цикла если обработчик прерываний клавы выставил флаг нажатия.
 void DrawMenu(void);
 void Save(void);								// Записывает в память текущие настройки
 void PumpStop(void);
@@ -194,21 +196,19 @@ void SIM900_SendStatus(void);                      // Отошлем на сервер текущее 
 void SIM900_SendHistory(void);                     // Отошлем на сервер историю событий
 
 
-uint8_t					LightLeft, 		  // Сколько осталось работать подсветке в сек.
-                CheckUPause, 	  // Задержка проверки питающего напряжения при старте насоса в сек/10
-                BtStat,				  // Состояние кнопок
-                Seconds;			  // Счетчик секунд из функции OneMoreSec()
-
-uint16_t				PumpPause,			    // Задержка перед повторным включением насоса в сек
-                Volts;
-
+uint8_t						LightLeft, 					// Сколько осталось работать подсветке в сек.
+									CheckUPause, 				// Задержка проверки питающего напряжения при старте насоса в сек/10
+									BtStat,							// Состояние кнопок
+									Seconds;						// Счетчик секунд из функции OneMoreSec()
+uint16_t					PumpPause,			    // Задержка перед повторным включением насоса в сек
+									Volts;
 volatile uint32_t	SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
+int8_t						MenuMode,						// Номер текущего режима меню
+									SIM900Status,				// Cостояние связи
+									settingsWasChanged, // Флаг несохраненных настроек
+									OneMoreSecCount;		// Количество секунд еще не обработаных by OneMoreSec(). можно судить о зависании.
+volatile uint8_t	bstat;							// Если не ноль, то необработаный код нажатой клавиши   
 
-int8_t					MenuMode,			  // Номер текущего режима меню
-                SIM900Status,   // Cостояние связи
-								settingsWasChanged, // Флаг несохраненных настроек
-								OneMoreSecCount;			// Количество секунд еще не обработаных by OneMoreSec(). можно судить о зависании.
-                
 struct TTime Now, remoteSettingsTimestamp;
 volatile struct TRXB rx;
 struct TSettings options;     // А не сделать ли их volatile ?!??!!?

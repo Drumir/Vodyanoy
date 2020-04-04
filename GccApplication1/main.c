@@ -114,7 +114,8 @@ int main(void)
 //  SIM900_SendReport();
   while (1) 
   {
-	if(OneMoreSecCount > 0){ OneMoreSec();}
+	if(OneMoreSecCount > 0) OneMoreSec();
+	if(bstat) OnKeyPress();
 
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
@@ -161,7 +162,7 @@ void OneMoreMin(void)
   if (Min == 60)
   {
     Min = 0;
-    //SIM900_GetBalance();
+    SIM900_GetBalance();
   }
 
   if(Min%5 == 0){
@@ -252,147 +253,9 @@ ISR(ADC_vect)          // Завершение преобразования АЦП
 
 ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 {
-  unsigned char bstat;  
-	cli();
-	LightLeft = LIGHT_TIME; 
+	LightLeft = LIGHT_TIME;			// Включим подсветку сразу чтобы показать, что не висит
   LIGHT_ON;
-
-  bstat = PIND & 0b01111000;
-  if (bstat == 0b01010000)       // Кнопка вниз 
-	{
-  	switch(MenuMode)
-  	{
-    	case MD_DIRPUMP:{ PumpStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
-    	case MD_DIRHEATER:{ HeaterStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
-    	case MD_PUMPWORKTIME:
-    	{
-      	if(options.PumpWorkDuration == 0) options.PumpWorkDuration = 420;
-      	else options.PumpWorkDuration -= DELTA_TIME;
-				settingsWasChanged = 1;
-      	DrawMenu();
-      	break;
-    	}
-    	case MD_PUMPRELAXTIME:
-    	{
-      	if(options.PumpRelaxDuration == 0) options.PumpRelaxDuration = 2160;
-      	else options.PumpRelaxDuration -= DELTA_TIME;
-				settingsWasChanged = 1;
-      	DrawMenu();
-      	break;
-    	}
-
-    	case MD_MIN_T:
-    	{
-      	if(options.HeaterOnTemp > 0) options.HeaterOnTemp --;
-      	DrawMenu();
-				settingsWasChanged = 1;
-      	break;
-    	}
-
-    	case MD_MAX_T:
-    	{
-      	if(options.HeaterOffTemp-1 > options.HeaterOnTemp) options.HeaterOffTemp --;
-      	DrawMenu();
-				settingsWasChanged = 1;
-      	break;
-    	}
-    	case MD_STAT:
-    	{
-				SilentLeft = 2;
-				break;
-    	}
-    	case MD_CLEAR:			// Забыть статистику
-    	{
-      	options.FrostFlag = 0;
-      	PumpPause = 0;
-      	MenuMode = MD_STAT;
-      	DrawMenu();
-      	break;
-    	}
-  	}
-	}
-  if (bstat == 0b01100000)       // Кнопка вверх
-	{
-  	switch(MenuMode)
-  	{
-    	case MD_DIRPUMP:				// Включить насос вручную
-    	{
-      	LCD_gotoXY(0, 3);
-      	if(PumpStart() == 0) LCD_writeStringInv(strD);	//Если старт насоса вернул ошибку - отобразить её
-      	else { LCD_writeString("  Включено    ");}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
-      	break;
-    	}
-    	case MD_DIRHEATER:{ HeaterStart(); LCD_gotoXY(0, 3);LCD_writeString("  Включено    "); break;}
-    	case MD_PUMPWORKTIME:
-    	{
-      	options.PumpWorkDuration += DELTA_TIME;
-      	if(options.PumpWorkDuration > 420) options.PumpWorkDuration = 0;
-				settingsWasChanged = 1;
-      	DrawMenu();
-      	break;
-    	}
-    	case MD_PUMPRELAXTIME:
-    	{
-      	options.PumpRelaxDuration += DELTA_TIME;
-      	if(options.PumpRelaxDuration > 2160) options.PumpRelaxDuration = 0;
-				settingsWasChanged = 1;
-      	DrawMenu();
-      	break;
-    	}
-
-    	case MD_MIN_T:
-    	{
-      	if(options.HeaterOnTemp+1 < options.HeaterOffTemp) options.HeaterOnTemp ++;
-      	DrawMenu();
-				settingsWasChanged = 1;
-      	break;
-    	}
-
-    	case MD_MAX_T:
-    	{
-      	if(options.HeaterOffTemp < 20) options.HeaterOffTemp ++;			//Временно для тестов. Исправить на 10С-15С
-      	DrawMenu();
-				settingsWasChanged = 1;
-      	break;
-    	}
-    	case MD_STAT:
-    	{
-      	break;
-    	}
-    	case MD_CLEAR:			// Забыть настройки
-    	{
-      	options.PumpRelaxDuration = 0;
-      	options.PumpWorkDuration = 0;
-      	options.HeaterOffTemp = 10;
-      	options.HeaterOnTemp = 5;
-				settingsWasChanged = 1;
-      	Save();
-      	options.PumpTimeLeft = 0;
-      	PumpStop();
-      	MenuMode = MD_STAT;
-      	DrawMenu();
-      	break;
-    	}
-    				
-  	}
-	}
-  if (bstat == 0b00110000)       // Кнопка влево
-  {
-		Save();
-		MenuMode --;
-		if(MenuMode < 0) MenuMode = MD_LAST-1;
-		DrawMenu();
-  }
-  
-  if (bstat == 0b01110000)      // Кнопка вправо
-  {  
-		Save();
-		MenuMode ++;
-		if(MenuMode == MD_LAST) MenuMode = 0;
-		DrawMenu();
-  }
-
-  sei();
+  bstat = PIND & 0b01111000;	// Дальше обрабатывать нажатие будет OnKeyPress()
 }
 //------------------------------------------------------------------------------
 ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц)
@@ -446,6 +309,144 @@ ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
   	else
   	rx.wptr = nextwptr;
 	}
+}
+//----------------------------------------------------------------
+void OnKeyPress(void)
+{
+	if (bstat == 0b01010000)       // Кнопка вниз
+	{
+		switch(MenuMode)
+		{
+			case MD_DIRPUMP:{ PumpStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
+			case MD_DIRHEATER:{ HeaterStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
+			case MD_PUMPWORKTIME:
+			{
+				if(options.PumpWorkDuration == 0) options.PumpWorkDuration = 420;
+				else options.PumpWorkDuration -= DELTA_TIME;
+				settingsWasChanged = 1;
+				DrawMenu();
+				break;
+			}
+			case MD_PUMPRELAXTIME:
+			{
+				if(options.PumpRelaxDuration == 0) options.PumpRelaxDuration = 2160;
+				else options.PumpRelaxDuration -= DELTA_TIME;
+				settingsWasChanged = 1;
+				DrawMenu();
+				break;
+			}
+
+			case MD_MIN_T:
+			{
+				if(options.HeaterOnTemp > 0) options.HeaterOnTemp --;
+				DrawMenu();
+				settingsWasChanged = 1;
+				break;
+			}
+
+			case MD_MAX_T:
+			{
+				if(options.HeaterOffTemp-1 > options.HeaterOnTemp) options.HeaterOffTemp --;
+				DrawMenu();
+				settingsWasChanged = 1;
+				break;
+			}
+			case MD_STAT:
+			{
+				SilentLeft = 2;
+				break;
+			}
+			case MD_CLEAR:			// Забыть статистику
+			{
+				options.FrostFlag = 0;
+				PumpPause = 0;
+				MenuMode = MD_STAT;
+				DrawMenu();
+				break;
+			}
+		}
+	}
+	if (bstat == 0b01100000)       // Кнопка вверх
+	{
+		switch(MenuMode)
+		{
+			case MD_DIRPUMP:				// Включить насос вручную
+			{
+				LCD_gotoXY(0, 3);
+				if(PumpStart() == 0) LCD_writeStringInv(strD);	//Если старт насоса вернул ошибку - отобразить её
+				else { LCD_writeString("  Включено    ");}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
+				break;
+			}
+			case MD_DIRHEATER:{ HeaterStart(); LCD_gotoXY(0, 3);LCD_writeString("  Включено    "); break;}
+			case MD_PUMPWORKTIME:
+			{
+				options.PumpWorkDuration += DELTA_TIME;
+				if(options.PumpWorkDuration > 420) options.PumpWorkDuration = 0;
+				settingsWasChanged = 1;
+				DrawMenu();
+				break;
+			}
+			case MD_PUMPRELAXTIME:
+			{
+				options.PumpRelaxDuration += DELTA_TIME;
+				if(options.PumpRelaxDuration > 2160) options.PumpRelaxDuration = 0;
+				settingsWasChanged = 1;
+				DrawMenu();
+				break;
+			}
+
+			case MD_MIN_T:
+			{
+				if(options.HeaterOnTemp+1 < options.HeaterOffTemp) options.HeaterOnTemp ++;
+				DrawMenu();
+				settingsWasChanged = 1;
+				break;
+			}
+
+			case MD_MAX_T:
+			{
+				if(options.HeaterOffTemp < 20) options.HeaterOffTemp ++;			//Временно для тестов. Исправить на 10С-15С
+				DrawMenu();
+				settingsWasChanged = 1;
+				break;
+			}
+			case MD_STAT:
+			{
+				break;
+			}
+			case MD_CLEAR:			// Забыть настройки
+			{
+				options.PumpRelaxDuration = 0;
+				options.PumpWorkDuration = 0;
+				options.HeaterOffTemp = 10;
+				options.HeaterOnTemp = 5;
+				settingsWasChanged = 1;
+				Save();
+				options.PumpTimeLeft = 0;
+				PumpStop();
+				MenuMode = MD_STAT;
+				DrawMenu();
+				break;
+			}
+			
+		}
+	}
+	if (bstat == 0b00110000)       // Кнопка влево
+	{
+		Save();
+		MenuMode --;
+		if(MenuMode < 0) MenuMode = MD_LAST-1;
+		DrawMenu();
+	}
+	
+	if (bstat == 0b01110000)      // Кнопка вправо
+	{
+		Save();
+		MenuMode ++;
+		if(MenuMode == MD_LAST) MenuMode = 0;
+		DrawMenu();
+	}
+	bstat = 0;
 }
 //----------------------------------------------------------------
 void Reset(void)
@@ -587,7 +588,7 @@ uint8_t PumpStart(void)
 {
   if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return 0;}
   if(options.FrostFlag == 1){strcpy(strD, "Возм.заморозка"); return 0;}
-  if(PumpPause > 0){ strcpy(strD, "Пауза "); itoa(PumpPause/10, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return 0;}
+  if(PumpPause > 0){ strcpy(strD, "Пауза "); itoa(PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return 0;}
   options.PumpTimeLeft = options.PumpWorkDuration;
   CheckUPause = 20;		// 2 секунды не проверять питающее напряжение!
   options.PumpWorkFlag = 1;
