@@ -82,7 +82,7 @@
 #define LIGHT_TIME						30		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
-#define FIRST_CONNECT_DELAY		5 		// Время в секундах от включения устройства до первой попытки связи с сервером
+#define FIRST_CONNECT_DELAY		25 		// Время в секундах от включения устройства до первой попытки связи с сервером
 
 #define LIGHT_ON	PORTB &= ~(1 << 3)
 #define LIGHT_OFF PORTB |= (1 << 3)

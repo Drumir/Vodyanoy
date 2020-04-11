@@ -112,16 +112,16 @@ int main(void)
   sei();
 	ShowStat();
 
-	LCD_gotoXY(0, 4); LCD_writeString(MSG_Loading);
+	LCD_gotoXY(0, 4); strcpy(strD, MSG_Loading); LCD_writeString(strD);
   SIM900_PrepareConnection();
-	const char* messageId = MSG_Successful;
+	strcpy(strD, MSG_Successful);
 	switch(SIM900Status){
-		case SIM900_BAT_FAIL:		{messageId = MSG_BatFail; break;}
-		case SIM900_FAIL:				{messageId = MSG_SimFail; break;}
-		case SIM900_GSM_FAIL:		{messageId = MSG_GSMFail; break;}
-		case SIM900_GPRS_FAIL:	{messageId = MSG_GPRSFail; break;}
+		case SIM900_BAT_FAIL:		{strcpy(strD, MSG_BatFail); break;}
+		case SIM900_FAIL:				{strcpy(strD, MSG_SimFail); break;}
+		case SIM900_GSM_FAIL:		{strcpy(strD, MSG_GSMFail); break;}
+		case SIM900_GPRS_FAIL:	{strcpy(strD, MSG_GPRSFail); break;}
 	}
-	LCD_gotoXY(0, 4); LCD_writeString(messageId);
+	LCD_gotoXY(0, 4); LCD_writeString(strD);
 
     if(SIM900Status >= SIM900_UP){
 	    if (Now.yy == 0){
@@ -159,6 +159,7 @@ int main(void)
         else if (timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) < 0) // Если настройки на сервере новее
         {
           SIM900_GetSettings();                                                       // Скачаем и примем их
+			    SilentLeft = options.ConnectPeriod * 60;		// Обновим период сеансов связи
         }
 
         SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
@@ -659,7 +660,7 @@ void DrawMenu(void)
     case MD_PUMPRELAXTIME:
     {
       x = 3; if(MenuMode == MD_PUMPRELAXTIME) x = 10;
-      LCD_gotoXY(0, 0);LCD_writeStringInv(MSG_PumpSchedule);
+      LCD_gotoXY(0, 0);strcpy(strD, MSG_PumpSchedule); LCD_writeStringInv(strD);
       LCD_gotoXY(0, 1);	LCD_writeString(" Работ  Стоит ");
       LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
       LCD_gotoXY(0, 3);MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, strD);strcat(buf, strD);LCD_writeString(buf);
@@ -670,7 +671,7 @@ void DrawMenu(void)
     case MD_MAX_T:
     {
       x = 3; if(MenuMode == MD_MAX_T) x = 10;
-      LCD_gotoXY(0, 0);LCD_writeStringInv(MSG_HeaterSchedul);
+      LCD_gotoXY(0, 0);strcpy(strD, MSG_HeaterSchedul); LCD_writeStringInv(strD);
       LCD_gotoXY(0, 1);	LCD_writeString("  ВКЛ   ВыКЛ  ");
       LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
       itoa(options.HeaterOnTemp, buf+2, 10); strcpy(strD, "*C    "); strD[0] = 0xBF; strcat(buf, strD); itoa(options.HeaterOffTemp, strD, 10); strcat(buf, strD); strcpy(strD, "*C   ");strD[0] = 0xBF; strcat(buf, strD);
@@ -681,7 +682,7 @@ void DrawMenu(void)
     case MD_STAT: { ShowStat(); break;}
     case MD_CLEAR:
     {
-      LCD_gotoXY(0, 0);LCD_writeStringInv(MSG_Reset);
+      LCD_gotoXY(0, 0);strcpy(strD, MSG_Reset); LCD_writeStringInv(strD);
       LCD_gotoXY(0, 1);LCD_writeStringInv("              ");
       LCD_gotoXY(0, 2);		strcpy(buf, "  настройки   "); buf[1] = 0xAB; buf[12] = 0xAB; LCD_writeString(buf);
       LCD_gotoXY(0, 3);	LCD_writeString("   Сбросить   ");
@@ -695,15 +696,15 @@ void DrawMenu(void)
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
 
 			strcpy(buf, "N");
-			itoa(Now.yy, strD, 10); strcat(buf, strD); itoa(Now.MM, strD, 10); strcat(buf, strD);itoa(Now.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+			itoa(Now.MM, strD, 10); strcat(buf, strD);itoa(Now.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(Now.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 2);LCD_writeString(buf);
 			strcpy(buf, "R");
-			itoa(remoteSettingsTimestamp.yy, strD, 10); strcat(buf, strD); itoa(remoteSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(remoteSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+			itoa(remoteSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(remoteSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(remoteSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(remoteSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(remoteSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 3);LCD_writeString(buf);
 			strcpy(buf, "L");
-			itoa(options.localSettingsTimestamp.yy, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
+			itoa(options.localSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(options.localSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 4);LCD_writeString(buf);
 
@@ -714,7 +715,7 @@ void DrawMenu(void)
 void ShowStat(void)
 {
   LCD_clear();
-  LCD_gotoXY(0, 0); LCD_writeStringInv(MSG_Stat);		// Отобразим заголовок
+  LCD_gotoXY(0, 0); strcpy(strD, MSG_Stat); LCD_writeStringInv(strD);		// Отобразим заголовок
 
   itoa(State.Temp/16, buf, 10);
   strcpy(strD, "*C           "); strD[0] = 0xBF;

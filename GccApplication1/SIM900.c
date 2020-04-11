@@ -238,12 +238,29 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage(); 
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(strS);
+									// {"status":"success","result":[{"timestamp":"2020-04-11 14:16:01"}]}
+									// {"status":"success","result":[{"timestamp":"2020-04-11 14:16:01"}]}
+									// {"status":"success","result":[{"timestamp":"2020-04-11 14:16:01"}]}
+
+		uint16_t commaPosition = 0;
+		while(*(rx.buf+rx.ptrs[0]+commaPosition) != '-' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Найдем первое тире в строке - перед ним расположен год!
+		if(*(rx.buf+rx.ptrs[0]+commaPosition) != '\0'){
+			*(rx.buf+rx.ptrs[0]+commaPosition) = ' ';			// Избавимся от ёбаных тире, которые str2int() принимает за минусы!!!
+			*(rx.buf+rx.ptrs[0]+commaPosition + 3) = ' ';
+		}
+    remoteSettingsTimestamp.yy = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition-2);
+    remoteSettingsTimestamp.MM = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+1);
+    remoteSettingsTimestamp.dd = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+4);
+    remoteSettingsTimestamp.hh = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+7);  // На сервере установлено мировое время
+    remoteSettingsTimestamp.mm = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+10);
+    remoteSettingsTimestamp.ss = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+13);
+
+/*    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(strS);
     strncpy(strS, (char*)rx.buf+rx.ptrs[0]+49, 2); remoteSettingsTimestamp.MM = str2int(strS);
     strncpy(strS, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.dd = str2int(strS);
     strncpy(strS, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(strS);  // На сервере установлено мировое время
     strncpy(strS, (char*)rx.buf+rx.ptrs[0]+58, 2); remoteSettingsTimestamp.mm = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(strS);*/
 		//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]+44);
     dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -304,15 +321,21 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage();                    // {"status":"success","result":"180315230102,120,240,3,10,5,8,-1,8,40,8,8,8,8,8,60,8,20,8,960,9027891301,9040448302"}
-		
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+32, 2); strS[2] = '\0';options.localSettingsTimestamp.yy = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+35, 2); strS[2] = '\0';options.localSettingsTimestamp.MM = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+38, 2); strS[2] = '\0';options.localSettingsTimestamp.dd = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+41, 2); strS[2] = '\0';options.localSettingsTimestamp.hh = str2int(strS); // Переведем время в локальное
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+44, 2); strS[2] = '\0';options.localSettingsTimestamp.mm = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+47, 2); strS[2] = '\0';options.localSettingsTimestamp.ss = str2int(strS);  
-    while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
-    commaPosition ++;
+																			// {"status":"success","result":"2020-04-11 14:16:01,45,45,22,25,5,11,-1,11,50,0,2,2,0,9,1440,1,20,0,840,9027891301,9040448302"}
+
+		while(*(rx.buf+rx.ptrs[0]+commaPosition) != '-' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Найдем первое тире в строке - перед ним расположен год!
+		if(*(rx.buf+rx.ptrs[0]+commaPosition) != '\0'){
+			*(rx.buf+rx.ptrs[0]+commaPosition) = ' ';			// Избавимся от ёбаных тире, которые str2int() принимает за минусы!!!
+			*(rx.buf+rx.ptrs[0]+commaPosition + 3) = ' ';
+		}
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+commaPosition-2, 2); strS[2] = '\0';options.localSettingsTimestamp.yy = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+commaPosition+1, 2); strS[2] = '\0';options.localSettingsTimestamp.MM = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+commaPosition+4, 2); strS[2] = '\0';options.localSettingsTimestamp.dd = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+commaPosition+7, 2); strS[2] = '\0';options.localSettingsTimestamp.hh = str2int(strS); // Переведем время в локальное
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+commaPosition+10, 2); strS[2] = '\0';options.localSettingsTimestamp.mm = str2int(strS);
+    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+commaPosition+13, 2); strS[2] = '\0';options.localSettingsTimestamp.ss = str2int(strS);  
+    //while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
+    //commaPosition ++;
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе вторую запятую
     //commaPosition ++;
     options.PumpWorkDuration = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition);
@@ -360,7 +383,7 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
 		if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длительность работы или отдыха насоса
 		eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));		// Сохраним полученные настройки в EEPROM
 
-    dropMessage();     // Отбросим прочитанное
+		dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
   }
   dropMessage();
