@@ -190,14 +190,29 @@ void LCD_writeCharInv (unsigned char ch)
 
 /*--------------------------------------------------------------------------------------------------
   Name         :  LCD_writeString
-  Description  :  Displays a string stored in FLASH, in small fonts (refer to 3310_routines.h)
-  Argument(s)  :  string -> Pointer to ASCII string (stored in FLASH)
+  Description  :  Displays a string stored in RAM, in small fonts (refer to 3310_routines.h)
+  Argument(s)  :  string -> Pointer to ASCII string (stored in RAM)
   Return value :  None.
 --------------------------------------------------------------------------------------------------*/
 void LCD_writeString ( const char *string )
 {
     while ( *string )
         LCD_writeChar( *string++ );
+}
+
+/*--------------------------------------------------------------------------------------------------
+  Name         :  LCD_writeString
+  Description  :  Displays a string stored in FLASH, in small fonts (refer to 3310_routines.h)
+  Argument(s)  :  string -> Pointer to ASCII string (stored in FLASH)
+  Return value :  None.
+--------------------------------------------------------------------------------------------------*/
+void LCD_writePMstring ( const char *string )
+{
+	char lastChar;
+  do{
+		lastChar = pgm_read_byte(string ++);
+		LCD_writeChar(lastChar);
+	}while(lastChar != '\0');
 }
 /*--------------------------------------------------------------------------------------------------
   Name         :  LCD_writeStringInv
@@ -209,6 +224,20 @@ void LCD_writeStringInv ( const char *string )
 {
     while ( *string )
         LCD_writeCharInv( *string++ );
+}
+/*--------------------------------------------------------------------------------------------------
+  Name         :  LCD_writeString
+  Description  :  Displays a string stored in FLASH, in small fonts (refer to 3310_routines.h)
+  Argument(s)  :  string -> Pointer to ASCII string (stored in FLASH)
+  Return value :  None.
+--------------------------------------------------------------------------------------------------*/
+void LCD_writePMstringInv ( const char *string )
+{
+	char lastChar;
+  do{
+		lastChar = pgm_read_byte(string ++);
+		LCD_writeCharInv(lastChar);
+	}while(lastChar != '\0');
 }
 
 /*--------------------------------------------------------------------------------------------------

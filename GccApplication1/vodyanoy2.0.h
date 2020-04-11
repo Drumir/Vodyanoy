@@ -179,6 +179,8 @@ void readSMS(void);
 int16_t str2int(char* str);
 void waitMessage(void);
 int8_t timeCompare(struct TTime *timeOne, struct TTime *timeTwo);
+void strcpyPM(char *dest, const char *PMsrc);		// Копирует из PROGMEM строку в dest;
+
 
 void SIM900_GetBalance(void);
 void SIM900_WaitRegistration(void);
@@ -221,17 +223,33 @@ char query[100];  // Текстовый буфер для формирования Http запросов.
 char buf[23];			// Еще один буфер для дисплея
 //char DebugStr[35];
 
-static const char link[]							PROGMEM = "vodyanoy.000webhostapp.com/r.php";
+static const char link[]											= "vodyanoy.000webhostapp.com/r.php";
 static const char MSG_BatFail[]				PROGMEM = "Battery_FAIL  ";
 static const char MSG_SimFail[]				PROGMEM = "SIM900_FAIL   ";
 static const char MSG_GSMFail[]				PROGMEM = "SIM90_GSM_FAIL";
 static const char MSG_GPRSFail[]			PROGMEM = "SIM9_GPRS_FAIL";
 static const char MSG_HTTPFail[]			PROGMEM = "SIM9_HTTP_FAIL";
-static const char MSG_Loading[]				PROGMEM = "   Загрузка   ";
+static const char MSG_Loading[]				PROGMEM = "Устновка связи";
 static const char MSG_Stat[]					PROGMEM = "  Статистика  ";
 static const char MSG_PumpSchedule[]	PROGMEM = " Насос.Распис ";
 static const char MSG_Reset[]					PROGMEM = "    Сброс     ";
 static const char MSG_HeaterSchedul[] PROGMEM = "Обогрев.Распис";
 static const char MSG_Successful[]		PROGMEM = "   Успешно    ";
+static const char MSG_Blank[]					PROGMEM = "              ";
+static const char MSG_ToReset[]				PROGMEM = "   Сбросить   ";
+static const char MSG_Freezing[]			PROGMEM = "Возм.заморозка";
+static const char MSG_RightNow[]			PROGMEM = " Прямо сейчас ";
+static const char MSG_WorkRelax[]			PROGMEM = " Работ  Стоит ";
+static const char MSG_OnOff[]					PROGMEM = "  ВКЛ   ВыКЛ  ";
+static const char MSG_Pump[]					PROGMEM = "    Насос     ";
+static const char MSG_Heater[]				PROGMEM = "   Обогрев    ";
+static const char MSG_On[]						PROGMEM = "     ВКЛ      ";
+static const char MSG_Off[]						PROGMEM = "     ВыКЛ     ";
+static const char MSG_ToSettings[]		PROGMEM = "  настройки   ";
+static const char MSG_ToStat[]				PROGMEM = "  статистику  ";
+static const char MSG_Info[]					PROGMEM = "Отлад-я инфо-я";
+static const char MSG_TimerOff[]			PROGMEM = "Таймер ОТКЛ   ";
+static const char MSG_Celsium[]				PROGMEM = "*C           ";
+
 																					
 #endif  // VODYANOY20_H

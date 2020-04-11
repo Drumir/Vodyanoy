@@ -37,6 +37,9 @@ void LCD_writeData ( unsigned char data );
 void LCD_writeCommand ( unsigned char command );
 void LCD_writeString ( const char *string);
 void LCD_writeStringInv ( const char *string);
+void LCD_writePMstring ( const char *string ); // Функция для печати строк из PROGMEM
+void LCD_writePMstringInv ( const char *string ); // Функция для печати строк из PROGMEM
+
 //void LCD_setPixel ( unsigned char x, unsigned char y);
 //void LCD_drawLine ( unsigned char x1, unsigned char y1, unsigned char x2, unsigned char y2 );
 //void LCD_drawBorder (void );

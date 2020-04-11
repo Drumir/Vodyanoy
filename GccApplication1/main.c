@@ -112,16 +112,16 @@ int main(void)
   sei();
 	ShowStat();
 
-	LCD_gotoXY(0, 4); strcpy(strD, MSG_Loading); LCD_writeString(strD);
+	LCD_gotoXY(0, 4); LCD_writePMstring(MSG_Loading);
   SIM900_PrepareConnection();
-	strcpy(strD, MSG_Successful);
+	LCD_gotoXY(0, 4); 
 	switch(SIM900Status){
-		case SIM900_BAT_FAIL:		{strcpy(strD, MSG_BatFail); break;}
-		case SIM900_FAIL:				{strcpy(strD, MSG_SimFail); break;}
-		case SIM900_GSM_FAIL:		{strcpy(strD, MSG_GSMFail); break;}
-		case SIM900_GPRS_FAIL:	{strcpy(strD, MSG_GPRSFail); break;}
+		case SIM900_BAT_FAIL:		{LCD_writePMstring(MSG_BatFail); break;}
+		case SIM900_FAIL:				{LCD_writePMstring(MSG_SimFail); break;}
+		case SIM900_GSM_FAIL:		{LCD_writePMstring(MSG_GSMFail); break;}
+		case SIM900_GPRS_FAIL:	{LCD_writePMstring(MSG_GPRSFail); break;}
+		default:								{LCD_writePMstring(MSG_Successful);}	
 	}
-	LCD_gotoXY(0, 4); LCD_writeString(strD);
 
     if(SIM900Status >= SIM900_UP){
 	    if (Now.yy == 0){
@@ -647,51 +647,51 @@ void DrawMenu(void)
     case MD_DIRPUMP:
     case MD_DIRHEATER:
     {
-      strcpy(buf, "    Насос     "); buf[11] = 0x80; buf[12] = 0x81;
-      if(MenuMode == MD_DIRHEATER){strcpy(buf, "   Обогрев    "); buf[11] = 0xA8; buf[12] = 0xA8;}
+      strcpyPM(buf, MSG_Pump); buf[11] = 0x80; buf[12] = 0x81;
+      if(MenuMode == MD_DIRHEATER){strcpyPM(buf, MSG_Heater); buf[11] = 0xA8; buf[12] = 0xA8;}
       LCD_gotoXY(0, 0);LCD_writeStringInv(buf);
-      LCD_gotoXY(0, 1);	LCD_writeString(" Прямо сейчас ");
-      LCD_gotoXY(0, 2);		strcpy(buf, "     ВКЛ      "); buf[4] = 0xAB; buf[9] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 1);	LCD_writePMstring(MSG_RightNow);
+      LCD_gotoXY(0, 2);	strcpyPM(buf, MSG_On); buf[4] = 0xAB; buf[9] = 0xAB; LCD_writeString(buf);
       LCD_gotoXY(0, 3);	LCD_writeString("              ");
-      LCD_gotoXY(0, 4);		strcpy(buf, "     ВыКЛ     "); buf[4] = 0xAC; buf[9] = 0xAC; LCD_writeString(buf);
+      LCD_gotoXY(0, 4);	strcpyPM(buf, MSG_Off); buf[4] = 0xAC; buf[9] = 0xAC; LCD_writeString(buf);
       break;
     }
     case MD_PUMPWORKTIME:
     case MD_PUMPRELAXTIME:
     {
       x = 3; if(MenuMode == MD_PUMPRELAXTIME) x = 10;
-      LCD_gotoXY(0, 0);strcpy(strD, MSG_PumpSchedule); LCD_writeStringInv(strD);
-      LCD_gotoXY(0, 1);	LCD_writeString(" Работ  Стоит ");
-      LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
-      LCD_gotoXY(0, 3);MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, strD);strcat(buf, strD);LCD_writeString(buf);
-      LCD_gotoXY(0, 4);		strcpy(buf, "              "); buf[x] = 0xAC; LCD_writeString(buf);
+      LCD_gotoXY(0, 0); LCD_writePMstringInv(MSG_PumpSchedule); // Расписание насоса
+      LCD_gotoXY(0, 1); LCD_writePMstring(MSG_WorkRelax);		// Работает/стоит
+      LCD_gotoXY(0, 2); strcpyPM(buf, MSG_Blank); buf[x] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 3); MinToStr(options.PumpWorkDuration, buf+1); strcat(buf, "  ");MinToStr(options.PumpRelaxDuration, strD);strcat(buf, strD);LCD_writeString(buf);
+      LCD_gotoXY(0, 4);	strcpyPM(buf, MSG_Blank); buf[x] = 0xAC; LCD_writeString(buf);
       break;
     }
     case MD_MIN_T:
     case MD_MAX_T:
     {
       x = 3; if(MenuMode == MD_MAX_T) x = 10;
-      LCD_gotoXY(0, 0);strcpy(strD, MSG_HeaterSchedul); LCD_writeStringInv(strD);
-      LCD_gotoXY(0, 1);	LCD_writeString("  ВКЛ   ВыКЛ  ");
-      LCD_gotoXY(0, 2);		strcpy(buf, "              "); buf[x] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 0); LCD_writePMstringInv(MSG_HeaterSchedul);
+      LCD_gotoXY(0, 1);	LCD_writePMstring(MSG_OnOff);
+      LCD_gotoXY(0, 2);	strcpyPM(buf, MSG_Blank); buf[x] = 0xAB; LCD_writeString(buf);
       itoa(options.HeaterOnTemp, buf+2, 10); strcpy(strD, "*C    "); strD[0] = 0xBF; strcat(buf, strD); itoa(options.HeaterOffTemp, strD, 10); strcat(buf, strD); strcpy(strD, "*C   ");strD[0] = 0xBF; strcat(buf, strD);
       LCD_gotoXY(0, 3);	LCD_writeString(buf);
-      LCD_gotoXY(0, 4);		strcpy(buf, "              "); buf[x] = 0xAC; LCD_writeString(buf);
+      LCD_gotoXY(0, 4);	strcpyPM(buf, MSG_Blank); buf[x] = 0xAC; LCD_writeString(buf);
       break;
     }
     case MD_STAT: { ShowStat(); break;}
     case MD_CLEAR:
     {
-      LCD_gotoXY(0, 0);strcpy(strD, MSG_Reset); LCD_writeStringInv(strD);
-      LCD_gotoXY(0, 1);LCD_writeStringInv("              ");
-      LCD_gotoXY(0, 2);		strcpy(buf, "  настройки   "); buf[1] = 0xAB; buf[12] = 0xAB; LCD_writeString(buf);
-      LCD_gotoXY(0, 3);	LCD_writeString("   Сбросить   ");
-      LCD_gotoXY(0, 4);		strcpy(buf, "  статистику  "); buf[1] = 0xAC; buf[12] = 0xAC; LCD_writeString(buf);
+      LCD_gotoXY(0, 0); LCD_writePMstringInv(MSG_Reset);
+      LCD_gotoXY(0, 1); LCD_writePMstringInv(MSG_Blank);
+      LCD_gotoXY(0, 2);	strcpyPM(buf, MSG_ToSettings); buf[1] = 0xAB; buf[12] = 0xAB; LCD_writeString(buf);
+      LCD_gotoXY(0, 3);	LCD_writePMstring(MSG_ToReset);
+      LCD_gotoXY(0, 4);	strcpyPM(buf, MSG_ToStat); buf[1] = 0xAC; buf[12] = 0xAC; LCD_writeString(buf);
       break;
     }
 		case MD_DEBUG:
 		{
-			LCD_gotoXY(0, 0);LCD_writeStringInv("    DEBUG     ");
+			LCD_gotoXY(0, 0);LCD_writePMstringInv(MSG_Info);
 			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, strD, 10); strcat(buf, strD); strcat(buf, "V");
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
 
@@ -715,17 +715,17 @@ void DrawMenu(void)
 void ShowStat(void)
 {
   LCD_clear();
-  LCD_gotoXY(0, 0); strcpy(strD, MSG_Stat); LCD_writeStringInv(strD);		// Отобразим заголовок
+  LCD_gotoXY(0, 0); LCD_writePMstringInv(MSG_Stat);		// Отобразим заголовок
 
   itoa(State.Temp/16, buf, 10);
-  strcpy(strD, "*C           "); strD[0] = 0xBF;
+  strcpyPM(strD, MSG_Celsium); strD[0] = 0xBF;
   if( PORTC & 0b00000100 ){strD[4] = 0xA8;strD[5] = 0xA8;}
   if( PORTC & 0b00010000 ){strD[7] = 0x80;strD[8] = 0x81;}
   strcat(buf, strD);
   LCD_gotoXY(0, 1);	 LCD_writeString(buf);					// Отобразим температуру и состояние обогревателя и насоса
 
   if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0)
-  strcpy(buf, "Таймер ОТКЛ   ");
+  strcpyPM(buf, MSG_TimerOff);
   else
   {
     MinToStr(options.PumpTimeLeft, buf);
@@ -742,7 +742,7 @@ void ShowStat(void)
     strcat(buf, " сек.   ");
   }
   if(options.FrostFlag == 1){
-		strcpy(buf, "Возм.заморозка");
+		strcpyPM(buf, MSG_Freezing);
 	}
 	LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
 
@@ -806,5 +806,17 @@ void measureBattery(void)
 	uint32_t vLongBat = ADC;
 	vLongBat *= 1024;					// Коррекция измерения
 	State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
+}
+//---------------------------------------------------------------------
+void strcpyPM(char *dest, const char *PMsrc)
+{
+	char lastChar;
+	uint16_t index = 0;
+	do{
+		lastChar = pgm_read_byte(PMsrc + index);
+		*(dest + index) = lastChar;
+		index ++;
+	}while(lastChar != '\0');
+	
 }
 //---------------------------------------------------------------------
