@@ -609,10 +609,8 @@ void CheckIncomingMessages(void)
 {
 																	   // +CLIP: "+78312330158",145,"",,"",0
 	if(strncmp((char*)rx.buf+rx.ptrs[0], "+CLIP: \"+7", 10) == 0){	// Входящий звонок. Звонки с нероссийских номеров игнорируются
-		LCD_gotoXY(0, 4); LCD_writeString((char*)rx.buf+rx.ptrs[10]); _delay_ms(1000);
-		if(strncmp((char*)rx.buf+rx.ptrs[10], options.OperatorTel, 10) == 0 || strncmp((char*)rx.buf+rx.ptrs[10], options.AdminTel, 10) == 0)
+		if(strncmp((char*)rx.buf+rx.ptrs[0]+10, options.OperatorTel, 10) == 0 || strncmp((char*)rx.buf+rx.ptrs[0]+10, options.AdminTel, 10) == 0)
 		{
-			LCD_gotoXY(0, 4); LCD_writeString((char*)rx.buf+rx.ptrs[10]);
 			if(SilentLeft > 5) SilentLeft = 0;	// Срочно организовать сеанс связи с сервером
 		}
 		dropMessage();				// Отбросим "+CLIP: "+78312330158",145,"",,"",0"
@@ -865,7 +863,6 @@ void ShowStat(void)
   if(HeaterWork >= 0x28F3980) strcpy(buf, "НуженСбросСтат");	// Обогреватель работает уже 497 суток. Счетчик вот-вот переполнится
   LCD_gotoXY(0, 4); LCD_writeString(buf);						// Отобразим статистику по обогреву
   */
-	LIGHT_OFF;
 }
 //---------------------------------------------------------------------
 void MinToStr(unsigned int Min, char *str)		// Переводит число минут в строку типа HH:MM
