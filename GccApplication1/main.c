@@ -7,13 +7,11 @@
 
 #include "vodyanoy2.0.h"
 
-volatile uint16_t TimeoutTackts = 0;
-
 
 int main(void)
 {
 	ACSR |= 0x80;			// Выключим не нужный, но включеный по умолчанию аналоговый компаратор
-  DDRC  = 0b11110100;    // 7-н, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-н, 2-ТЭН, 1-н, 0-н
+  DDRC  = 0b11111100;    // 7-н, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-отладка, 2-ТЭН, 1-н, 0-н
   PORTC = 0b01100000;
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111000;
@@ -45,7 +43,7 @@ int main(void)
 	rx.startptr = 0;                                       // Начало записываемого сообщения
 	rx.buf_overflow_count = 0;
 	rx.ptrs_overflow_count = 0;
-	rx.buf[RXBUFMAXSIZE] = 0;                               // Запишем сразу после буфера '\0' чтобы строковые функции не сошли с ума
+	rx.buf[RXBUFMAXSIZE-1] = 0;                               // Запишем сразу после буфера '\0' чтобы строковые функции не сошли с ума
   
   SIM900Status = SIM900_NOTHING;
 	MenuMode = MD_STAT;
@@ -54,6 +52,8 @@ int main(void)
 	Seconds = 0;
 	CheckUPause = 0;
 	SilentLeft = FIRST_CONNECT_DELAY;
+	TimeoutTackts = 0;
+
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
   remoteSettingsTimestamp.yy = 0;
@@ -61,8 +61,8 @@ int main(void)
   eeprom_read_block(&options, (const void*)0x00, sizeof(struct TSettings));
 
 
-//	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
-	if(1) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+//	if(1) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
   	options.FrostFlag = 0;
   	options.PumpWorkFlag = 0;
@@ -132,6 +132,7 @@ int main(void)
     }
 
 	if(SIM900Status >= SIM900_GSM_OK){
+		LCD_gotoXY(0, 4); LCD_writeString(" Get balance  ");
 		SIM900_GetBalance();
 	}
 
@@ -139,6 +140,8 @@ int main(void)
   {
 	if(OneMoreSecCount > 0) OneMoreSec();
 	if(bstat) OnKeyPress();
+
+	CheckIncomingMessages();
 
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
@@ -150,18 +153,22 @@ int main(void)
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
 				//SIM900_SetTimeFromServer();
-        SIM900_GetTime();              // Перед сеансом связи актуализируем время.
+        //SIM900_GetTime();              // Перед сеансом связи актуализируем время.
+				LCD_gotoXY(0, 4); LCD_writeString("CheckServTimeS");
         SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
         if(timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
         {
+					LCD_gotoXY(0, 4); LCD_writeString("RenewServSetts");
           SIM900_SendSettings();                                                  // Отошлем их на сервер
         } 
         else if (timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) < 0) // Если настройки на сервере новее
         {
-          SIM900_GetSettings();                                                       // Скачаем и примем их
+          SIM900_GetSettings(); 
+					LCD_gotoXY(0, 4); LCD_writeString("RevewLoclSetts");
 			    SilentLeft = options.ConnectPeriod * 60;		// Обновим период сеансов связи
         }
 
+				LCD_gotoXY(0, 4); LCD_writeString("Sending  Stats ");
         SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
 //        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
@@ -255,7 +262,9 @@ void OneMoreSec(void)
   }
   if(SilentLeft > 0) SilentLeft --;     // Счетчик секунд до сеанса связи
 
-  if(MenuMode == MD_STAT)ShowStat();
+	measureBattery();  
+
+	if(MenuMode == MD_STAT)ShowStat();
   
 }
 
@@ -291,40 +300,82 @@ ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц
 //----------------------------------------------------------------
 ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
 {
-	int16_t nextwptr, prevwptr, i;
+	volatile int16_t nextwptr, prevwptr, i;
 	if(rx.wptr == rx.startptr && rx.ptrs[0] == -1){   // Если это первый байт новой строки и нет необработаных строк
-  	rx.wptr = 0;
-  	rx.startptr = 0;    // Запишем эту строку в самое начало буфера
+		rx.wptr = 0;
+		rx.startptr = 0;    // Запишем эту строку в самое начало буфера
 	}
 	rx.buf[rx.wptr] = UDR;
 	nextwptr = rx.wptr + 1;
 	prevwptr = rx.wptr - 1;
 	if(rx.buf[rx.wptr] == CHAR_LF && rx.wptr > 0 && rx.buf[prevwptr] == CHAR_CR){  // Если приняли подряд CHAR_CR и CHAR_LF
-  	rx.buf[prevwptr] = '\0';                                      // Допишем нуль-терминатор (потеряв(отбросив) CHAR_CR и CHAR_LF
-  	if(prevwptr != rx.startptr){                                  // Если это нормальная, полноразмерная строка(состоит не только из CR LF)
-    	i = 0;
-    	while(rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT) i ++;    // Найдем в rx.ptrs первую незанятую ячейку
-    	if(i == RXBUFSTRCOUNT) { // Ужас-ужас - кончилось место под смещения строк (rx.ptrs)
-      	rx.ptrs_overflow_count ++;
-      	i = RXBUFSTRCOUNT-1;      // Перезапишем последнее сообщение
-      	//return; 								// Или просто потеряем его (последнее сообщение)
-    	}
-    	rx.ptrs[i] = rx.startptr;   // Впишем в rx.ptrs смещение свеже принятой строки
-    	rx.startptr = rx.wptr;      // Запомним где начнется след сообщение
-  	}
-  	else {    // Пустая строка CR+LF
-    	rx.wptr = prevwptr;
-  	}
+		rx.buf[prevwptr] = '\0';                                      // Допишем нуль-терминатор (потеряв(отбросив) CHAR_CR и CHAR_LF
+		if(prevwptr != rx.startptr){                                  // Если это нормальная, полноразмерная строка(состоит не только из CR LF)
+			i = 0;
+			while(rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT) i ++;    // Найдем в rx.ptrs первую незанятую ячейку
+			if(i == RXBUFSTRCOUNT) { // Ужас-ужас - кончилось место под смещения строк (rx.ptrs)
+				rx.ptrs_overflow_count ++;
+				i = RXBUFSTRCOUNT-1;      // Перезапишем последнее сообщение
+				//return; 								// Или просто потеряем его (последнее сообщение)
+			}
+			rx.ptrs[i] = rx.startptr;   // Впишем в rx.ptrs смещение свеже принятой строки
+			rx.startptr = rx.wptr;      // Запомним где начнется след сообщение
+		}
+		else {    // Пустая строка CR+LF
+			rx.wptr = prevwptr;
+		}
 	}
 	else {      // Просто еще один символ запишем в буфер
-  	if(nextwptr == RXBUFMAXSIZE){ // Ужас-ужас - буфер закончился
-    	rx.buf_overflow_count ++;   // Никакого ужаса. Мы просто не инкрементируем rx.wptr, и перезаписи не произойдет.
-    	rx.buf[prevwptr] = CHAR_CR; // Когда придет CHAR_LF, функция сможет закончить эту строку
-  	}
-  	else
-  	rx.wptr = nextwptr;
+		if(nextwptr == RXBUFMAXSIZE){ // Ужас-ужас - буфер закончился
+			rx.buf_overflow_count ++;   // Никакого ужаса. Мы просто не инкрементируем rx.wptr, и перезаписи не произойдет.
+			rx.buf[prevwptr] = CHAR_CR; // Когда придет CHAR_LF, функция сможет закончить эту строку
+		}
+		else
+		rx.wptr = nextwptr;
 	}
 }
+//----------------------------------------------------------------
+/*
+ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
+{
+	volatile int16_t nextwptr, prevwptr, i;
+	if(rx.wptr == rx.startptr && rx.ptrs[0] == -1){   // Если это первый байт новой строки и нет необработаных строк
+  		rx.wptr = 0;
+  		rx.startptr = 0;    // Запишем эту строку в самое начало буфера
+	}
+	rx.buf[rx.wptr] = UDR;
+	nextwptr = rx.wptr + 1;
+	prevwptr = rx.wptr - 1;
+	if(rx.buf[rx.wptr] == CHAR_LF && rx.wptr > 0 && rx.buf[prevwptr] == CHAR_CR)  // Если приняли подряд CHAR_CR и CHAR_LF, значит сообщение завершено. 
+	{
+  		rx.buf[prevwptr] = '\0';                                      // Допишем нуль-терминатор (потеряв(отбросив) CHAR_CR и CHAR_LF
+  		if(prevwptr != rx.startptr)                                   // Если это нормальная, полноразмерная строка(состоит не только из CR LF)
+			{
+    		i = 0;
+    		while(rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT-1) i ++;    // Найдем в rx.ptrs первую незанятую ячейку
+    		rx.ptrs[i] = rx.startptr;   // Впишем в rx.ptrs смещение свеже принятой строки
+    		rx.startptr = rx.wptr;      // Запомним где начнется след сообщение
+  		}
+  		else {    // Пустая строка CR+LF
+    		rx.wptr = prevwptr;
+  		}
+
+		i = 0;
+		while(rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT-1) i ++;    // Проверим не заполнился ли у нас массив под указатели на принятые строки  (rx.ptrs)
+		if(i == RXBUFSTRCOUNT-1) { // Ужас-ужас - кончилось место под смещения строк (rx.ptrs)
+ 			rx.ptrs_overflow_count ++;
+			dropMessage();					// Выбросим самое первое(старое) сообщение
+		}
+	}
+	else {      // Просто еще один символ запишем в буфер
+  		if(nextwptr == RXBUFMAXSIZE){ // Ужас-ужас - буфер закончился
+    		rx.buf_overflow_count ++;   // Никакого ужаса. Мы просто не инкрементируем rx.wptr, и перезаписи не произойдет.
+    		rx.buf[prevwptr] = CHAR_CR; // Когда придет CHAR_LF, функция сможет закончить эту строку
+  		}
+  		else
+  			rx.wptr = nextwptr;
+	}
+}*/
 //----------------------------------------------------------------
 void OnKeyPress(void)
 {
@@ -550,12 +601,33 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
 //----------------------------------------------------------------
 void waitMessage(void)
 {
-  while(rx.ptrs[0] == -1);
+	TimeoutTackts = 100;		// Таймаутожидания 10 сек.
+  while(rx.ptrs[0] == -1 && TimeoutTackts != 0);
+}
+//----------------------------------------------------------------
+void CheckIncomingMessages(void)
+{
+																	   // +CLIP: "+78312330158",145,"",,"",0
+	if(strncmp((char*)rx.buf+rx.ptrs[0], "+CLIP: \"+7", 10) == 0){	// Входящий звонок. Звонки с нероссийских номеров игнорируются
+		LCD_gotoXY(0, 4); LCD_writeString((char*)rx.buf+rx.ptrs[10]); _delay_ms(1000);
+		if(strncmp((char*)rx.buf+rx.ptrs[10], options.OperatorTel, 10) == 0 || strncmp((char*)rx.buf+rx.ptrs[10], options.AdminTel, 10) == 0)
+		{
+			LCD_gotoXY(0, 4); LCD_writeString((char*)rx.buf+rx.ptrs[10]);
+			if(SilentLeft > 5) SilentLeft = 0;	// Срочно организовать сеанс связи с сервером
+		}
+		dropMessage();				// Отбросим "+CLIP: "+78312330158",145,"",,"",0"
+		uart_send("ATH0");		// Сбросим вызов
+		waitMessage();dropMessage();        // Выбрасываем эхо
+		waitMessage();dropMessage();				// Выбрасываем ОК
+		return;
+	}
+
+	dropMessage();		// Все остальные сообщения просто отбрасываем
 }
 //----------------------------------------------------------------
 void dropMessage(void)
 {
-	uint8_t i;
+	volatile uint8_t i;
 	for (i = 0; i < RXBUFSTRCOUNT-1 && rx.ptrs[i] != -1; i ++)
 	rx.ptrs[i] = rx.ptrs[i+1];
 	rx.ptrs[RXBUFSTRCOUNT-1] = -1;
@@ -754,7 +826,17 @@ void ShowStat(void)
 		itoa(SilentLeft, strD, 10); strcat(buf, strD); strcat(buf, "s");
 	}
 	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
-	
+
+	volatile uint16_t i = 0;
+	for(i = 0; rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT; i ++);
+	strcpy(buf, "p"); itoa(i, strD, 10);strcat(buf, strD); 
+	strcat(buf, " w"); itoa(rx.wptr, strD, 10);strcat(buf, strD);
+	strcat(buf, " b");itoa(rx.buf_overflow_count, strD, 10);strcat(buf, strD);
+	strcat(buf, " o");itoa(rx.ptrs_overflow_count, strD, 10);strcat(buf, strD);
+	LCD_gotoXY(0, 4); LCD_writeString(buf);
+	//LCD_gotoXY(0, 4); LCD_writeString(options.AdminTel);
+	//LCD_gotoXY(0, 5); LCD_writeString(options.OperatorTel);
+
 /*	strcpy(buf, "SIM900Stat ");
 	itoa(SIM900Status, strD, 10);
 	strcat(buf, strD);
@@ -783,9 +865,10 @@ void ShowStat(void)
   if(HeaterWork >= 0x28F3980) strcpy(buf, "НуженСбросСтат");	// Обогреватель работает уже 497 суток. Счетчик вот-вот переполнится
   LCD_gotoXY(0, 4); LCD_writeString(buf);						// Отобразим статистику по обогреву
   */
+	LIGHT_OFF;
 }
 //---------------------------------------------------------------------
-void MinToStr(unsigned int Min, char *str)
+void MinToStr(unsigned int Min, char *str)		// Переводит число минут в строку типа HH:MM
 {
   int m, h;
   h = Min/60;
@@ -808,7 +891,7 @@ void measureBattery(void)
 	State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
 }
 //---------------------------------------------------------------------
-void strcpyPM(char *dest, const char *PMsrc)
+void strcpyPM(char *dest, const char *PMsrc)		// Копирует строку из PROGMEM в dest;
 {
 	char lastChar;
 	uint16_t index = 0;

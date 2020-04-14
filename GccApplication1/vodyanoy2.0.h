@@ -90,8 +90,6 @@
 #define RXBUFMAXSIZE 300
 #define RXBUFSTRCOUNT 6
 
-#define SERVER_ADDRES 
-
 FIFO( 128 ) uart_tx_fifo;
 
 struct TTime {
@@ -139,12 +137,12 @@ struct TSettings {          // Структура для хранения всех сохраняемых в eeprom 
 };
 
 struct TRXB {
-  char    buf[RXBUFMAXSIZE+1];     // Буфер для приёма входящих USART сообщений на всякий случай запишем после него 0
+  char    buf[RXBUFMAXSIZE];     // Буфер для приёма входящих USART сообщений на всякий случай запишем после него 0
   int16_t ptrs[RXBUFSTRCOUNT];     // Массив смещений на начала принятых сообщений. смещение -1 означает, что смещение пустое
-  int16_t wptr;                    // Смещение записи в buf
-  int16_t startptr;                // Смещение начала текущего записываемого сообщения
   uint16_t buf_overflow_count;     // Счетчик переполнения буфера приема
   uint16_t ptrs_overflow_count;    // Счетчик переполнения ptrs
+  int16_t wptr;                    // Смещение записи в buf
+  int16_t startptr;                // Смещение начала текущего записываемого сообщения
 };
 
 ISR(USART__RXC_vect);  //Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom32a.h (для mega32a) БЛЕАТЬ!!!
@@ -169,6 +167,8 @@ void RecToHistory(uint8_t eventCode);
 uint8_t ConnectToServer(void);      // Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
 void Reset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
 void measureBattery(void);					// Измеряет напряжение аккумулятора, записывает его в state.vBat
+void CheckIncomingMessages(void);		// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
+
 
 void incomingMessage(char* s);
 void renewLCD(void);
@@ -199,22 +199,23 @@ void SIM900_SendStatus(void);                      // Отошлем на сервер текущее 
 void SIM900_SendHistory(void);                     // Отошлем на сервер историю событий
 
 
-uint8_t						LightLeft, 					// Сколько осталось работать подсветке в сек.
-									CheckUPause, 				// Задержка проверки питающего напряжения при старте насоса в сек/10
-									BtStat,							// Состояние кнопок
-									Seconds;						// Счетчик секунд из функции OneMoreSec()
-uint16_t					PumpPause,			    // Задержка перед повторным включением насоса в сек
-									Volts;
-volatile uint32_t	SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
-int8_t						MenuMode,						// Номер текущего режима меню
-									SIM900Status,				// Cостояние связи
-									settingsWasChanged, // Флаг несохраненных настроек
-									OneMoreSecCount;		// Количество секунд еще не обработаных by OneMoreSec(). можно судить о зависании.
+uint8_t								LightLeft, 					// Сколько осталось работать подсветке в сек.
+											CheckUPause, 				// Задержка проверки питающего напряжения при старте насоса в сек/10
+											BtStat,							// Состояние кнопок
+											Seconds;						// Счетчик секунд из функции OneMoreSec()
+uint16_t							PumpPause,			    // Задержка перед повторным включением насоса в сек
+											Volts;
+volatile uint32_t			SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
+int8_t								MenuMode,						// Номер текущего режима меню
+											SIM900Status,				// Cостояние связи
+											settingsWasChanged, // Флаг несохраненных настроек
+											OneMoreSecCount;		// Количество секунд еще не обработаных by OneMoreSec(). можно судить о зависании.
 volatile uint8_t	bstat;							// Если не ноль, то необработаный код нажатой клавиши   
 
 struct TTime Now, remoteSettingsTimestamp;
 volatile struct TRXB rx;
 struct TSettings options;     // А не сделать ли их volatile ?!??!!?
+volatile uint16_t TimeoutTackts;		// Автоматически декремируется до нуля прерыванием таймера 10 раз в секунду
 
 char strI[23];		// Буфер для использования в прерываниях
 char strD[23];		// Буфер для использования в выводе на дисплей
