@@ -1,5 +1,7 @@
 # ignore all files in the build/ directory
 GccApplication1/Debug/
-
+GccApplication1/GccApplication1.componentinfo.xml
+GccApplication1/GccApplication1.cproj
+.vs/
 # ignore old backup versions of SL
 *.bak
