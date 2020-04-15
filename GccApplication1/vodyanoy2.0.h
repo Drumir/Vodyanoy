@@ -170,7 +170,6 @@ void measureBattery(void);					// Измеряет напряжение аккумулятора, записывает е
 void CheckIncomingMessages(void);		// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
 
 
-void incomingMessage(char* s);
 void renewLCD(void);
 uint8_t waitAnswer(char *answer, uint16_t timeout);
 void dropMessage(void);
@@ -216,6 +215,7 @@ struct TTime Now, remoteSettingsTimestamp;
 volatile struct TRXB rx;
 struct TSettings options;     // А не сделать ли их volatile ?!??!!?
 volatile uint16_t TimeoutTackts;		// Автоматически декремируется до нуля прерыванием таймера 10 раз в секунду
+volatile uint16_t TimeoutsCount;		// Счетчик срабатывания таймаутов в функциях waitMessage(), waitAnswer()
 
 char strI[23];		// Буфер для использования в прерываниях
 char strD[23];		// Буфер для использования в выводе на дисплей

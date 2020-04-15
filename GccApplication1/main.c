@@ -53,6 +53,7 @@ int main(void)
 	CheckUPause = 0;
 	SilentLeft = FIRST_CONNECT_DELAY;
 	TimeoutTackts = 0;
+	TimeoutsCount = 0;
 
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
@@ -558,27 +559,6 @@ int uart_send(char *str)
   return 0;
 }
 //----------------------------------------------------------------
-void incomingMessage(char* s)
-{
-  //  char strnum[15];
-  //  static uint16_t num = 0;
-  /*
-  free(message);
-  message = (char*) calloc(strlen(s)+3, sizeof(char));
-  if(message == NULL){
-    LCDPuts("___calloc fail");
-    return;
-  }
-  strcpy(message, s);
-  */
-  //  strnum[0] = '_';
-  //  itoa(num, strnum+1, 10);
-  //  strncat(strnum, message, 11);
-  //  num ++;
-  //  LCD_Puts(strnum);
-  
-}
-//----------------------------------------------------------------
 void renewLCD(void)
 {
 }
@@ -588,8 +568,10 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
   TimeoutTackts = timeout;			// Запустим отсчёт таймаута
   while(1){
     while(rx.ptrs[0] == -1 && TimeoutTackts != 0);
-    if(TimeoutTackts == 0)                                          // Если вышли из цикла по таймауту, возвращаем 0 
+    if(TimeoutTackts == 0){                                          // Если вышли из цикла по таймауту, возвращаем 0 
+			TimeoutsCount ++;
       return 0;
+		}
     if(strncmp((char*)rx.buf+rx.ptrs[0], answer, strlen(answer)) == 0){     // Если получен нужный ответ, возвращаем 1
       dropMessage();
       return 1;                                                
@@ -603,6 +585,7 @@ void waitMessage(void)
 {
 	TimeoutTackts = 100;		// Таймаутожидания 10 сек.
   while(rx.ptrs[0] == -1 && TimeoutTackts != 0);
+	if(TimeoutTackts == 0) TimeoutsCount ++;
 }
 //----------------------------------------------------------------
 void CheckIncomingMessages(void)
@@ -619,7 +602,13 @@ void CheckIncomingMessages(void)
 		waitMessage();dropMessage();				// Выбрасываем ОК
 		return;
 	}
-
+	
+	if(strncmp((char*)rx.buf+rx.ptrs[0], "+CMTI:", 6) == 0){	// Входящее СМС
+		uart_send("AT+CMGD=4");			// Удаляем вообще все сообщения
+		waitMessage();dropMessage();        // Выбрасываем эхо
+		waitMessage();dropMessage();				// Выбрасываем ОК
+	}
+	
 	dropMessage();		// Все остальные сообщения просто отбрасываем
 }
 //----------------------------------------------------------------
@@ -627,7 +616,7 @@ void dropMessage(void)
 {
 	volatile uint8_t i;
 	for (i = 0; i < RXBUFSTRCOUNT-1 && rx.ptrs[i] != -1; i ++)
-	rx.ptrs[i] = rx.ptrs[i+1];
+		rx.ptrs[i] = rx.ptrs[i+1];
 	rx.ptrs[RXBUFSTRCOUNT-1] = -1;
 }
 //----------------------------------------------------------------
@@ -777,7 +766,7 @@ void DrawMenu(void)
 			itoa(options.localSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(options.localSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 4);LCD_writeString(buf);
-
+			
 		}
   }
 }
@@ -825,15 +814,15 @@ void ShowStat(void)
 	}
 	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
 
-	volatile uint16_t i = 0;
-	for(i = 0; rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT; i ++);
-	strcpy(buf, "p"); itoa(i, strD, 10);strcat(buf, strD); 
-	strcat(buf, " w"); itoa(rx.wptr, strD, 10);strcat(buf, strD);
-	strcat(buf, " b");itoa(rx.buf_overflow_count, strD, 10);strcat(buf, strD);
-	strcat(buf, " o");itoa(rx.ptrs_overflow_count, strD, 10);strcat(buf, strD);
+	//			volatile uint16_t i = 0;
+	//			for(i = 0; rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT; i ++);
+	//			strcpy(buf, "p"); itoa(i, strD, 10);strcat(buf, strD);
+	//			strcat(buf, " w"); itoa(rx.wptr, strD, 10);strcat(buf, strD);
+	//			strcat(buf, " b");itoa(rx.buf_overflow_count, strD, 10);strcat(buf, strD);
+	strcpy(buf, "bo");itoa(rx.buf_overflow_count, strD, 10);strcat(buf, strD);
+	strcat(buf, " po");itoa(rx.ptrs_overflow_count, strD, 10);strcat(buf, strD);
+	strcat(buf, " tc");itoa(TimeoutsCount, strD, 10);strcat(buf, strD);
 	LCD_gotoXY(0, 4); LCD_writeString(buf);
-	//LCD_gotoXY(0, 4); LCD_writeString(options.AdminTel);
-	//LCD_gotoXY(0, 5); LCD_writeString(options.OperatorTel);
 
 /*	strcpy(buf, "SIM900Stat ");
 	itoa(SIM900Status, strD, 10);

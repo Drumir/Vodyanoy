@@ -414,3 +414,16 @@ void RecToHistory(uint8_t eventCode)              // Запишем в историю событие
   
 }
 //----------------------------------------------------------------
+/*			static uint8_t smsNun = 0;
+			if (smsNun == 0)
+			{
+				uart_send("AT+CMGF=1"); waitMessage(); dropMessage(); waitAnswer("OK", 50);				// Включить текстовый режим СМС
+				uart_send("AT+CSCS= \"GSM\""); waitMessage(); dropMessage(); waitAnswer("OK", 50);// Использовать кодировку "GSM"
+				uart_send("AT+CSCB=1"); waitMessage(); dropMessage(); waitAnswer("OK", 50);				// Запертить прием специальных сообщений
+			}
+			else{
+				strcpy(strS, "AT+CMGR="); itoa(smsNun, strD, 10); strcat(strS, strD); uart_send(strS); // Прочитать СМС номер smsNun
+				dropMessage(); dropMessage();dropMessage();
+			}
+			smsNun ++;
+*/
