@@ -193,6 +193,8 @@ void SIM900_EnableGPRS(void)
   //    Эти настройки УЖЕ сохранены в энергонезависимой памяти модуля
   //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitAnswer("OK", 60);
   //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 60);
+	//uart_send("AT+CNMI=2,2");waitMessage();dropMessage();waitMessage();dropMessage(); // Принятые СМС сразу отправятся в МК без каких либо запрососв и уведомлений
+
   do{
     iterations ++;
     _delay_ms(1500);

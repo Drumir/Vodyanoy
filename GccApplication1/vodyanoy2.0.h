@@ -5,6 +5,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
+#include <avr/wdt.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -88,7 +89,7 @@
 #define LIGHT_OFF PORTB |= (1 << 3)
 
 #define RXBUFMAXSIZE 300
-#define RXBUFSTRCOUNT 6
+#define RXBUFSTRCOUNT 10
 
 FIFO( 128 ) uart_tx_fifo;
 
@@ -165,7 +166,7 @@ void OneMoreSec(void);							// Еще одна секунда прошла.
 int AdcToVolts(int A);							// Преобразует измеренное АЦП напряжение в Вольты
 void RecToHistory(uint8_t eventCode);
 uint8_t ConnectToServer(void);      // Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
-void Reset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
+void SoftReset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
 void measureBattery(void);					// Измеряет напряжение аккумулятора, записывает его в state.vBat
 void CheckIncomingMessages(void);		// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
 

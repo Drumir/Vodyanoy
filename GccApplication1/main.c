@@ -148,9 +148,6 @@ int main(void)
     {
       SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
        
-//	  uart_send("ATD+79040448302;"); _delay_ms(5000); uart_send("ATH0");
-//			State.balance = 179;
-
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
 				//SIM900_SetTimeFromServer();
@@ -293,15 +290,15 @@ ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц
   if(Tacts == 10 )		// (8 000 000 / 256) / 3125 = 10
   {
     Tacts = 0;
-		OneMoreSecCount ++;
-		if(OneMoreSecCount > 60) Reset();
-//    OneMoreSec();
+		OneMoreSecCount ++;		//В главном цикле увидят, что OneMoreSecCount != 0 и вызовут OneMoreSec();
+		if(OneMoreSecCount > 240) SoftReset();  //Если главный цикл не выполнялся уже 240 секунд, выполним перезагрузку устройства
   }
 }
 //----------------------------------------------------------------
 ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
 {
 	volatile int16_t nextwptr, prevwptr, i;
+	static uint8_t SmsFromAdminFlag = 0;
 	if(rx.wptr == rx.startptr && rx.ptrs[0] == -1){   // Если это первый байт новой строки и нет необработаных строк
 		rx.wptr = 0;
 		rx.startptr = 0;    // Запишем эту строку в самое начало буфера
@@ -312,6 +309,16 @@ ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
 	if(rx.buf[rx.wptr] == CHAR_LF && rx.wptr > 0 && rx.buf[prevwptr] == CHAR_CR){  // Если приняли подряд CHAR_CR и CHAR_LF
 		rx.buf[prevwptr] = '\0';                                      // Допишем нуль-терминатор (потеряв(отбросив) CHAR_CR и CHAR_LF
 		if(prevwptr != rx.startptr){                                  // Если это нормальная, полноразмерная строка(состоит не только из CR LF)
+										/*Система удаленной перезагрузки по СМС от админа с текстом "reset"  */
+			if(SmsFromAdminFlag > 0)												//Если предыдущая строка распозналась как заголовок смс от админа,
+			{
+				SmsFromAdminFlag --;
+				if(strncmp("reset", (char*)rx.buf+rx.startptr, 5) == 0)	// Сравниваем текст смс от админа с "reset"
+					SoftReset();
+			}
+			if(strncmp("+CMT: \"+79040448302\"", (char*)rx.buf+rx.startptr, 20) == 0)		//Проверяем не смс ли это от админа
+				SmsFromAdminFlag = 2;
+										/*Конец удаленной системы перезагрузки*/
 			i = 0;
 			while(rx.ptrs[i] != -1 && i < RXBUFSTRCOUNT) i ++;    // Найдем в rx.ptrs первую незанятую ячейку
 			if(i == RXBUFSTRCOUNT) { // Ужас-ужас - кончилось место под смещения строк (rx.ptrs)
@@ -516,9 +523,12 @@ void OnKeyPress(void)
 	bstat = 0;
 }
 //----------------------------------------------------------------
-void Reset(void)
+void SoftReset(void)
 {
-
+	uart_send("AT+CPOWD=1");		// Нормальное завершение работы SIM900
+	LCD_gotoXY(0, 4); LCD_writeStringInv("POWER DOWN NOW");
+	_delay_ms(4000);
+	wdt_enable(WDTO_15MS);		// Сброс через 15МС сторожевым таймером
 }
 //----------------------------------------------------------------
 void uart_init( void )
