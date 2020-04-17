@@ -57,7 +57,7 @@ void SIM900_SendStatus(void)
 
   itoa(State.Temp, strS, 10);
   strcpy(query, "AT+HTTPPARA=\"URL\",\"");
-  strcat(query, link);
+  strcat(query, options.Link);
   strcat(query, "?act=wT&t=");
   strcat(query, strS);
   strcat(query, "&vb=");
@@ -152,7 +152,7 @@ void SIM900_SetTimeFromServer(void)
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 60);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=getSrvTime\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=getSrvTime\"");
   uart_send(query);
   waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
@@ -227,7 +227,7 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 60);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=gts\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=gts\"");
   uart_send(query);
   waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
@@ -281,7 +281,7 @@ void SIM900_SendSettings(void)                    // Отсылает настройки на серве
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 60);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=wS&pump1="); // Write Settings
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=wS&pump1="); // Write Settings
   itoa(options.PumpWorkDuration, strS, 10); strcat(query, strS); strcat(query, "&pump0=");
   itoa(options.PumpRelaxDuration, strS, 10); strcat(query, strS); strcat(query, "&mint=");
   itoa(options.HeaterOnTemp, strS, 10); strcat(query, strS); strcat(query, "&maxt=");
@@ -310,7 +310,7 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
   waitAnswer("OK", 60);
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 60);
-  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=GetSettings\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=GetSettings\"");
   uart_send(query);
   waitAnswer("OK", 60);
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
@@ -402,7 +402,7 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
   uart_send("AT+HTTPPARA=\"CID\",1");
   waitAnswer("OK", 60);
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, link); strcat(query, "?act=sendHistory\"");
+  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=sendHistory\"");
 
   uart_send(query);
   waitAnswer("OK", 60);

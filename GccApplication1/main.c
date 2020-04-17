@@ -16,14 +16,16 @@ int main(void)
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111000;
   DDRB  = 0b11111010;    // 7-LCD_CLK, 6-LCD_DC, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
-//  DDRB  = 0b00001010;    // 7-4 - н, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
   PORTB = 0b00000010;
 	DDRA =  0b00000000;			// 7-1-н, 0 - ADC Vbat
 	PORTA = 0b00000000;
 
 
-  sbi(GICR, 7);          // Разрешить INT1  Для клавы
-  sbi(MCUCR, 3); cbi(MCUCR, 2);  // Прерывание по переходу 1->0  на линии CLK клавы 
+  sbi(GICR, INT1);          // Разрешить INT1 для клавы
+  sbi(GICR, INT2);          // Разрешить INT2 для монитора питания
+	
+  sbi(MCUCR, ISC11); cbi(MCUCR, ISC10);		// Прерывание INT1 по переходу 1->0  на линии CLK клавы 
+	cbi(MCUCSR, ISC2);											// Прерывание INT2 по переходу 1->0 от монитора питания
 
       /* Инициализация 16-битного таймера1 ( 10Гц) */
   TCCR1A =  0b00000000;	// CTC. Считать до OCR1A
@@ -54,6 +56,9 @@ int main(void)
 	SilentLeft = FIRST_CONNECT_DELAY;
 	TimeoutTackts = 0;
 	TimeoutsCount = 0;
+	State.PowerFailFlag = 0;
+	State.OpenDoorFlag = 0;
+	State.FloodingFlag = 0;
 
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
@@ -95,6 +100,7 @@ int main(void)
     options.localSettingsTimestamp.hh = 0;
     options.localSettingsTimestamp.mm = 0;
     options.localSettingsTimestamp.ss = 0;
+		strcpyPM((char*)options.Link, PM_link);
 	}
   
   //Save();
@@ -276,8 +282,16 @@ ISR(ADC_vect)          // Завершение преобразования АЦП
 ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 {
 	LightLeft = LIGHT_TIME;			// Включим подсветку сразу чтобы показать, что не висит
-  LIGHT_ON;
-  bstat = PIND & 0b01111000;	// Дальше обрабатывать нажатие будет OnKeyPress()
+	LIGHT_ON;
+	bstat = PIND & 0b01111000;	// Дальше обрабатывать нажатие будет OnKeyPress()
+}
+//------------------------------------------------------------------------------
+ISR(INT2_vect)   //CLK от клавы                          Отключение питания
+{
+	LightLeft = LIGHT_TIME;			// Включим подсветку сразу чтобы показать, что не висит
+	LIGHT_ON;
+	State.PowerFailFlag = 1;
+	PumpStop();
 }
 //------------------------------------------------------------------------------
 ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц)
@@ -813,7 +827,9 @@ void ShowStat(void)
   if(options.FrostFlag == 1){
 		strcpyPM(buf, MSG_Freezing);
 	}
-	LCD_gotoXY(0, 2);	 LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
+	LCD_gotoXY(0, 2);	
+	if(State.PowerFailFlag == 0) LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
+	else LCD_writeString("Сбой электр-ия");
 
 	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, strD, 10); strcat(buf, strD); strcat(buf, "v ");
 	if(SilentLeft >180){

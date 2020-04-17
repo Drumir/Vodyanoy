@@ -98,9 +98,12 @@ struct TTime {
 };
 
 struct TState {
-  int16_t balance;    // Количество средств на симкарте в рублях. Копейки отбрасываются
-  int16_t Temp;				// Текущая температура в помещении умноженная на 16
-  uint16_t Vbat;      // Напряжение на аккуме умноженное на 200
+  int16_t balance;				// Количество средств на симкарте в рублях. Копейки отбрасываются
+  int16_t Temp;						// Текущая температура в помещении умноженная на 16
+  uint16_t Vbat;					// Напряжение на аккуме умноженное на 200
+	uint8_t PowerFailFlag;	//Флаг отказа питания
+	uint8_t OpenDoorFlag;		//Флаг открытой двери
+	uint8_t FloodingFlag;		//Флаг затопления
 }State;
 
 struct TSettings {          // Структура для хранения всех сохраняемых в eeprom настроек и переменных.
@@ -117,7 +120,8 @@ struct TSettings {          // Структура для хранения всех сохраняемых в eeprom 
   fDailyNotifications;      // Флаги ежедневного оповещения о состоянии
   
   char          OperatorTel[11],          // Номер телефона оператора
-  AdminTel[11];             // Номер телефона администратора
+  AdminTel[11],             // Номер телефона администратора
+	Link[40];									// Адрес сервера формата "vodyanoy.000webhostapp.com/r.php"
   
   
   uint16_t			PumpWorkDuration,  	      // Сколько времени должен работать насос (в минутах)
@@ -149,6 +153,7 @@ struct TRXB {
 ISR(USART__RXC_vect);  //Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom32a.h (для mega32a) БЛЕАТЬ!!!
 ISR(USART__UDRE_vect);
 ISR(INT1_vect);         //CLK от клавы
+ISR(INT2_vect);         //INT от монитора питания
 ISR(TIMER1__COMPA_vect); //обработка совпадения счетчика1. Частота 10Гц.  Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom8a.h (для mega8a)
 ISR(ADC_vect);          // Завершение преобразования АЦП
 
@@ -225,7 +230,7 @@ char query[100];  // Текстовый буфер для формирования Http запросов.
 char buf[23];			// Еще один буфер для дисплея
 //char DebugStr[35];
 
-static const char link[]											= "vodyanoy.000webhostapp.com/r.php";
+static const char PM_link[]						PROGMEM	= "vodyanoy.000webhostapp.com/r.php";
 static const char MSG_BatFail[]				PROGMEM = "Battery_FAIL  ";
 static const char MSG_SimFail[]				PROGMEM = "SIM900_FAIL   ";
 static const char MSG_GSMFail[]				PROGMEM = "SIM90_GSM_FAIL";
