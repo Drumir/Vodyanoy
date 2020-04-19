@@ -56,6 +56,21 @@
   }
 
 
+  if($act == "sh") {
+    $timestamp = stripslashes($_GET['ts']); 
+    $eventCode = stripslashes($_GET['ec']); 
+    $query = "INSERT INTO history (timestamp, eventCode) VALUES (".$timestamp.", ".$eventCode.")";    
+    $result = mysqli_query ($link, $query);
+
+    if(!$result){
+      $answer["status"] = "fail";
+      $answer["result"][0] = mysqli_error($link); 
+    } 
+    else {
+      $answer["status"] = "success";
+    }               
+  }
+  
   if($act == "wT") {
     $temp = stripslashes($_GET['t']); 
     $Vbat = stripslashes($_GET['vb']); 

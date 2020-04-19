@@ -59,6 +59,9 @@ int main(void)
 	State.PowerFailFlag = 0;
 	State.OpenDoorFlag = 0;
 	State.FloodingFlag = 0;
+	historyPtr = 0;
+	for(uint16_t i = 0; i < HISTORYLENGTH; i ++)		// Очистим буфер истории
+		History[historyPtr].EventCode = EVENT_NONE;
 
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
@@ -157,7 +160,7 @@ int main(void)
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
 				//SIM900_SetTimeFromServer();
-        //SIM900_GetTime();              // Перед сеансом связи актуализируем время.
+        SIM900_GetTime();              // Перед сеансом связи актуализируем время.
 				LCD_gotoXY(0, 4); LCD_writeString("CheckServTimeS");
         SIM900_GetRemoteSettingsTimestamp();   // Получим время последнего изменения настроек на сервере
         if(timeCompare(&options.localSettingsTimestamp, &remoteSettingsTimestamp) > 0)   // Если локальные настройки новее
@@ -174,7 +177,8 @@ int main(void)
 
 				LCD_gotoXY(0, 4); LCD_writeString("Sending  Stats ");
         SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
-//        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
+				LCD_gotoXY(0, 4); LCD_writeString("Sending History");
+        SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
     } 
   }
@@ -216,11 +220,11 @@ void OneMoreSec(void)
     }
   }
 
-  if(State.PumpPause > 0)State. PumpPause --;	// Отсчитываем паузу перед повторным включением насоса
+  if(State.PumpPause > 0)State.PumpPause --;	// Отсчитываем паузу перед повторным включением насоса
   if(options.PumpWorkFlag == 1 && (PORTC & 0b00010000) == 0 ) // Если насос должен быть включен, но он вЫключен,
   {
     a = options.PumpTimeLeft;										// Сохраним оставшееся время
-    PumpStart();										// Снова включим насос (Оставшееся время при этом станет равным заданному в расписании)
+    if(PumpStart() != 0) RecToHistory(EVENT_PUMP_START_AUTO);	// Снова включим насос (Оставшееся время при этом станет равным заданному в расписании)
     options.PumpTimeLeft = a;										// Вернем оставшееся время
   }
 
@@ -241,8 +245,8 @@ void OneMoreSec(void)
   if(Seconds == 35){     // Каждую 35 секунду - чтение температуры
     State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
     //  Temp >>= 4; // 4
-    if(State.Temp <= options.HeaterOnTemp*16) HeaterStart();	//
-    if(State.Temp >= options.HeaterOffTemp*16) HeaterStop();	// При необходимости включим или выключим обогреватель
+    if(State.Temp <= options.HeaterOnTemp*16){ HeaterStart(); RecToHistory(EVENT_HEATER_START_AUTO);}	//
+    if(State.Temp >= options.HeaterOffTemp*16){ HeaterStop(); RecToHistory(EVENT_HEATER_STOP_AUTO);}	// При необходимости включим или выключим обогреватель
     if(State.Temp < -3 && options.PumpWorkFlag == 0) options.FrostFlag = 1;
   }
 
@@ -255,12 +259,14 @@ void OneMoreSec(void)
     {
       if(State.PowerFailFlag == 0 || options.PumpWorkFlag == 0) options.PumpTimeLeft --; // Если питание ОК или насос отдыхает
       if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 1)PumpStop();   // Закончилось время работы насоса
-      if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0)              // Закончилось время отдыха насоса
+      if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0){             // Закончилось время отдыха насоса
+				RecToHistory(EVENT_PUMP_START_AUTO);
         if(PumpStart() == 0)    // Если запуск насоса не удался
         {
           LCD_gotoXY(0, 2); LCD_writeString(strD);		//Если старт насоса вернул ошибку - отобразим её
           options.PumpTimeLeft ++; 									//И подождем еще одну минуту
         }
+			}
     }
     OneMoreMin();
   }
@@ -408,8 +414,8 @@ void OnKeyPress(void)
 	{
 		switch(MenuMode)
 		{
-			case MD_DIRPUMP:{ PumpStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
-			case MD_DIRHEATER:{ HeaterStop(); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
+			case MD_DIRPUMP:{ PumpStop(); RecToHistory(EVENT_PUMP_STOP_MANUAL); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
+			case MD_DIRHEATER:{ HeaterStop(); RecToHistory(EVENT_HEATER_STOP_MANUAL); LCD_gotoXY(0, 3);LCD_writeString("   Отключено  "); break;}
 			case MD_PUMPWORKTIME:
 			{
 				if(options.PumpWorkDuration == 0) options.PumpWorkDuration = 420;
@@ -452,6 +458,7 @@ void OnKeyPress(void)
 				options.FrostFlag = 0;
 				State.PumpPause = 0;
 				MenuMode = MD_STAT;
+				settingsWasChanged = 1;
 				DrawMenu();
 				break;
 			}
@@ -465,10 +472,10 @@ void OnKeyPress(void)
 			{
 				LCD_gotoXY(0, 3);
 				if(PumpStart() == 0) LCD_writeStringInv(strD);	//Если старт насоса вернул ошибку - отобразить её
-				else { LCD_writeString("  Включено    ");}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
+				else { LCD_writeString("  Включено    "); RecToHistory(EVENT_PUMP_START_MANUAL);}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
 				break;
 			}
-			case MD_DIRHEATER:{ HeaterStart(); LCD_gotoXY(0, 3);LCD_writeString("  Включено    "); break;}
+			case MD_DIRHEATER:{ HeaterStart(); RecToHistory(EVENT_HEATER_START_MANUAL); LCD_gotoXY(0, 3);LCD_writeString("  Включено    "); break;}
 			case MD_PUMPWORKTIME:
 			{
 				options.PumpWorkDuration += DELTA_TIME;
@@ -586,10 +593,6 @@ int uart_send(char *str)
   return 0;
 }
 //----------------------------------------------------------------
-void renewLCD(void)
-{
-}
-//----------------------------------------------------------------
 uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0
 {
   TimeoutTackts = timeout;			// Запустим отсчёт таймаута
@@ -673,6 +676,7 @@ void Save(void)
 		options.localSettingsTimestamp.yy = Now.yy; options.localSettingsTimestamp.MM = Now.MM; options.localSettingsTimestamp.dd = Now.dd;
 		options.localSettingsTimestamp.hh = Now.hh; options.localSettingsTimestamp.mm = Now.mm; options.localSettingsTimestamp.ss = Now.ss;
 		eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));
+		RecToHistory(EVENT_NEW_LOCAL_SETTINGS);
 		settingsWasChanged = 0;
 	}
 }
@@ -824,7 +828,7 @@ void ShowStat(void)
   if(State.PumpPause != 0 && options.PumpWorkFlag == 1)
   {
     strcpy(buf, "Пауза ");
-    itoa(State.PumpPause/10, strD, 10);
+    itoa(State.PumpPause, strD, 10);
     strcat(buf, strD);
     strcat(buf, " сек.   ");
   }
@@ -903,7 +907,7 @@ void measureBattery(void)
 	ADCSRA |= 1<<ADSC;		    // Старт преобразования
 	while (ADCSRA & 0x40);		// Ждем завершения(сброса флага ADSC в 0)
 	uint32_t vLongBat = ADC;
-	vLongBat *= 1024;					// Коррекция измерения
+	vLongBat *= 1027;					// Коррекция измерения
 	State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
 }
 //---------------------------------------------------------------------
@@ -929,15 +933,28 @@ void OnPowerFail(void)
 		PORTC &= 0b11101111;			// вЫключим насос (он на PC4)
 		if(State.PumpPause < 1) State.PumpPause = PUMP_RESTART_PAUSE;
 	}
+	if(State.PowerFailSecCount == 0) RecToHistory(EVENT_AC_FAIL);	// Чтобы не было повторных записей при частых отключениях
 	State.PowerFailSecCount = UNSTABLE_POWER_DELAY;
-	
 }
 //---------------------------------------------------------------------
 void OnPowerRestore(void)
 {
 	State.PowerFailFlag = 0;	
+	RecToHistory(EVENT_AC_RESTORE);
 }
 //---------------------------------------------------------------------
+void RecToHistory(uint8_t eventCode)
+{
+	History[historyPtr].EventTime.yy = Now.yy;
+	History[historyPtr].EventTime.MM = Now.MM;
+	History[historyPtr].EventTime.dd = Now.dd;
+	History[historyPtr].EventTime.hh = Now.hh;
+	History[historyPtr].EventTime.mm = Now.mm;
+	History[historyPtr].EventTime.ss = Now.ss;
+	History[historyPtr].EventCode = eventCode;
+	historyPtr ++;
+	if(historyPtr == HISTORYLENGTH) historyPtr = 0;
 
+}
 
 //  options.PumpTimeLeft = options.PumpRelaxDuration;

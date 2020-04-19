@@ -1,9 +1,9 @@
-﻿
+
 body {
   margin: 1px;
   background-color: #E4E4E4;
   color: #490A73;
-  font-size: 16px;
+  font-size: 22px;
   font-family: 'Segoe UI', Tahoma, sans-serif;  
   overflow-y: scroll;
   max-height: 850px;
@@ -15,6 +15,14 @@ h3 {
   margin: 3px;
   padding: 4px; 
 }
+input {
+  font-size: 20px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;  
+}
+.checkbox {
+  zoom: 1.8;
+}
+
 .topmenu {
   padding: 10px;
   margin: 5px;
@@ -32,7 +40,12 @@ h3 {
   height: 80px; 
   border-radius:5px;
 }
-
+#optionsTable{
+  font-size: 22px;
+  font-family: 'Segoe UI', Tahoma, sans-serif;  
+  overflow-y: scroll;
+  
+}
 .block{
     padding: 5px;
     margin: 3px;
@@ -42,7 +55,11 @@ h3 {
 .invisibleDiv{
     padding: 0px;
     margin: 0px;
-  
+}
+.bigText{
+/*  color: #FF1010;*/
+  font-size: 28px; 
+  font-weight: 500;
 }
 
 #batery{
@@ -52,12 +69,13 @@ h3 {
 a {
   cursor: pointer;
   text-decoration: none;
+  font-size: 20px;
 }
 
 button {
   width: 120px;
-  line-height: 20px;
-  font-size: 14px;
+  line-height: 26px;
+  font-size: 20px;
   border-radius:4px;
   border: 1px solid #666;
   background: -webkit-linear-gradient(top, #ffffff 0%, #f2f2f2 99%);
@@ -82,27 +100,3 @@ hr {
   width: 100%;
 }
 
-#status_line {
-  position: fixed;
-  bottom: 0px;
-  left: 0px;
-  background-color: #C0C0C0;
-  color: #0A0A0A;
-  width: 100%;
-  padding: 2px 0 2px 18px;
-  font-size: 16px;
-  font-family: 'Segoe UI', Tahoma, sans-serif;
-}
-
-#status {
-  color: #0A0A0A;
-  background: #C0C0E0;
-  font-size: 16px;
-  font-family: 'Segoe UI', Tahoma, sans-serif;
-}
-
-
-#menuTable {
-  font-size: 16px;
-  font-family: 'Segoe UI', Tahoma, sans-serif; 
-}

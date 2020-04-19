@@ -53,14 +53,13 @@
 #define EVENT_HTTP_FAIL             4   // Модуль не может подключиться к серверу (проблема  с сервером?)
 #define EVENT_NEW_LOCAL_SETTINGS    5   // Вручную (локально) заданы новые настройки водяного
 #define EVENT_NEW_REMOTE_SETTINGS   6   // Удаленно (через интернет) заданы новые настройки водяного 
-#define EVENT_PUMP_START_AUTO       7   // Старт насоса по расписанию
+#define EVENT_PUMP_START_AUTO       7   // Старт насоса автоматически (по расписанию или после сбоя AC)
 #define EVENT_PUMP_START_MANUAL     8   // Старт насоса вручную
 #define EVENT_PUMP_START_REMOTE     9   // Старт насоса удаленно
 #define EVENT_PUMP_STOP_AUTO        10  // Отключение насоса по расписанию
 #define EVENT_PUMP_STOP_MANUAL      11  // Отключение насоса вручную
 #define EVENT_PUMP_STOP_REMOTE      12  // Отключение насоса удаленно
 #define EVENT_PUMP_STOP_EMERGENCY   13  // Аварийное отключение насоса
-#define EVENT_PUMP_NO_SHEDULE       14  // Запуск насоса не разрешен из-за отсутствия расписания
 #define EVENT_HEATER_START_AUTO     15  // Автоматическое включение обогревателя 
 #define EVENT_HEATER_START_MANUAL   16  // Ручное включение обогревателя
 #define EVENT_HEATER_START_REMOTE   17  // Удаленное включение обогревателя
@@ -76,8 +75,6 @@
 #define EVENT_RXB_OVERLOAD          27  // Переполнение приёмного буфера RX
 #define EVENT_HISTORY_OVERLOAD      28  // Переполнение истории
 #define EVENT_START						      29	// Включение водяного
-#define EVENT_BALANCE_LOW			      30	// Мало денег на счету сим карты
-#define EVENT_PUMP_CAN_FREEZE				31  // Запуск насоса не разрешен из-за возможной заморозки
 #define EVENT_OTHER									32  // Все остальные события
 
 #define LIGHT_TIME						10		// Время работы подсветки. В сек
@@ -89,10 +86,12 @@
 #define LIGHT_ON	PORTB &= ~(1 << 3)
 #define LIGHT_OFF PORTB |= (1 << 3)
 
-#define RXBUFMAXSIZE 300
-#define RXBUFSTRCOUNT 10
+#define RXBUFMAXSIZE 300						// Размер буфера приёмника UART
+#define RXBUFSTRCOUNT 10						// Размер массива для хранения смещений на начала принятых сообщений
 
-FIFO( 128 ) uart_tx_fifo;
+#define HISTORYLENGTH	40						// Длинна буфера истории. Размер больше в 4 раза
+
+FIFO( 128 ) uart_tx_fifo;						// Буфер передатчика UART 
 
 struct TTime {
   uint8_t yy, MM, dd, hh, mm, ss;
@@ -154,6 +153,11 @@ struct TRXB {
   int16_t startptr;                // Смещение начала текущего записываемого сообщения
 };
 
+struct HistoryEvent {
+	uint8_t					EventCode;
+	struct TTime		EventTime;
+	};
+
 ISR(USART__RXC_vect);  //Имена прерываний определены в c:\Program Files\Atmel\AVR Studio 5.1\extensions\Atmel\AVRGCC\3.3.1.27\AVRToolchain\avr\include\avr\iom32a.h (для mega32a) БЛЕАТЬ!!!
 ISR(USART__UDRE_vect);
 ISR(INT1_vect);         //CLK от клавы
@@ -182,11 +186,8 @@ void measureBattery(void);					// Измеряет напряжение аккумулятора, записывает е
 void CheckIncomingMessages(void);		// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
 
 
-void renewLCD(void);
 uint8_t waitAnswer(char *answer, uint16_t timeout);
 void dropMessage(void);
-void smsToText(char *sms, char *text);
-void readSMS(void);
 int16_t str2int(char* str);
 void waitMessage(void);
 int8_t timeCompare(struct TTime *timeOne, struct TTime *timeTwo);
@@ -227,6 +228,8 @@ volatile struct TRXB rx;
 struct TSettings options;     // А не сделать ли их volatile ?!??!!?
 volatile uint16_t TimeoutTackts;		// Автоматически декремируется до нуля прерыванием таймера 10 раз в секунду
 volatile uint16_t TimeoutsCount;		// Счетчик срабатывания таймаутов в функциях waitMessage(), waitAnswer()
+struct HistoryEvent History[HISTORYLENGTH];
+volatile uint16_t historyPtr;
 
 char strI[23];		// Буфер для использования в прерываниях
 char strD[23];		// Буфер для использования в выводе на дисплей

@@ -9,7 +9,7 @@
   <script type="text/javascript" src=".\js\status.js"></script> 
 </head>
 <body> 
-  <div id="caption" align="absmiddle"><h1>Водяной 2.0</h1></div> 
+  <div id="caption" align="center"><h1>Водяной 2.0</h1></div> 
   <table style="width:100%;"> 
     <tr>
       <td class="topmenu" style="background-color:#E4E4E4"><a href="index.html">Статус</a></td>
@@ -19,73 +19,44 @@
     </tr>
   </table> 
   <div id="main"> 
-    <div id="leftCol" style="float:left; width:85%">
-      <div id="pump" class="block">
-        <h3>Насос</h3>
-        <p></p>
-        <p></p>
+    <div id="leftCol">
+
+      <div id="pumpSupply" class="block">
+        <span class="bigText">Насос:</span>&nbsp;&nbsp;<span id="pumpStatus">???</span>&nbsp;&nbsp;&nbsp;&nbsp;
+        <span class="bigText">Электропитание:</span>&nbsp;&nbsp;<span id="supplyStatus">???</span>&nbsp;&nbsp;
+        <a id="aPumpChartSwitch">Подробнее</a>
+        <div id="pumpSupplyChart" height="0px"></div>
       </div>
-      <div id="warm" class="block">
-        <h3>Обогреватель</h3>
-        <p></p>
-          <div id="chart"></div>
+      
+      <div id="wartTemp" class="block">
+        <span class="bigText">Обогреватель:</span>&nbsp;&nbsp;<span id="warmStatus">???</span>&nbsp;&nbsp;&nbsp;&nbsp;
+        <span class="bigText">Температура:</span>&nbsp;&nbsp;<span id="tempStatus">???</span>&nbsp;&nbsp;
+        <a id="aWarmChartSwitch">Подробнее</a>
+        <div id="warmTempChart" height="0px"></div>
       </div>
-      <div id="door" class="block">
-        <h3>Дверь</h3>
-        <p> </p> 
-      </div>
-      <div id="flood" class="block">
-        <h3>Датчик затопления</h3>
-        <p></p>
+      
+      <div id="connectBalance" class="block">
+        <span class="bigText">Сеанс связи:</span>&nbsp;&nbsp;<span id="connectStatus" style="color:black">???</span>&nbsp;&nbsp;&nbsp;&nbsp;
+        <span class="bigText">Баланс:</span>&nbsp;&nbsp;<span id="balanceStatus">???</span>&nbsp;&nbsp;
+        <a id="aConnectSwitch" >Подробнее</a>
+        <div id="connectBalanceChart" height="0px"></div>
       </div>
 
+      <div id="doorFlood" class="block">
+        <span class="bigText">Дверь:</span>&nbsp;&nbsp;<span id="doorStatus">???</span>&nbsp;&nbsp;&nbsp;&nbsp;
+        <span class="bigText">Затопление:</span>&nbsp;&nbsp;<span id="floodStatus">???</span>&nbsp;&nbsp;
+        <a id="aDoorSwitch" >Подробнее</a>
+        <div id="doorFloodChart" height="0px"></div>
+      </div>
+      
+      <div id="battery" class="block">
+        <span class="bigText">Аккумулятор:</span>&nbsp;&nbsp;<span id="batteryStatus">???</span>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a id="aBatterySwitch" >Подробнее</a>
+        <div id="batteryChart" height="0px"></div>
+      </div>
+      
     </div> 
-    <div id="rightCol" style="float:left; width:15%">
-      <div id="leftTop" style="float:left;width:100%" class="invisibleDiv"> 
-        <div style="float:left; width:100%;" class="invisibleDiv">
-          <div id="batery" class="block">
-            <p>Аккумулятор</p>
-            <img src="batery.png">
-            <p><span id="p_vbat">????%</span></p>
-          </div>
-        </div>
-        <div style="float:left; width:100%;">
-          <div id="supply" class="block">
-            <p>Электропитание</p>
-            <p></p>
-            <p></p>
-          </div>
-        </div>
-      </div>
-      <div  style="float:left;width:100%"> 
-        <div id="powerFail" class="block">
-          <p>Сбоев электропитания</p>
-          <p></p>
-          <p></p>
-          <p></p>
-        </div>
-      </div>
-      <div  style="float:left;width:100%"> 
-        <div id="lastConnection" class="block">
-          Последнее обновление:
-        </div>
-      </div>
-      <div id="leftBottom" style="float:left;width:100%;">
-        <div style="float:left; width:50%;">
-          <div id="traffic" class="block">
-            <p>Трафик</p>
-            <p></p>
-          </div> 
-        </div> 
-        <div style="float:left; width:50%;">
-          <div id="balance" class="block">
-            <p>Баланс</p>
-            <p><span id="p_balance">????</span></p>
-          </div>
-        </div>
-      </div>
 
-    </div>
   </div>
 
 </body>

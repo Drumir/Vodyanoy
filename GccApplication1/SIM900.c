@@ -13,7 +13,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
     case SIM900_NOTHING:  // СИМ900 еще даже не запитана
     {                           // Измерим напряжение на батарее
 			measureBattery();
-      if(State.Vbat < 32*20)
+      if(State.Vbat < 33*20)
       {
         SIM900Status = SIM900_BAT_FAIL;
         return;  
@@ -384,6 +384,7 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
 
 		if(options.PumpWorkDuration == 0 || options.PumpRelaxDuration == 0) PumpStop();  // Это выключает насос если в меню задали нулевую длительность работы или отдыха насоса
 		eeprom_write_block(&options, (void*)0x00, sizeof(struct TSettings));		// Сохраним полученные настройки в EEPROM
+		RecToHistory(EVENT_NEW_REMOTE_SETTINGS);
 
 		dropMessage();     // Отбросим прочитанное
     waitMessage(); dropMessage();     // Отбросим "ОК"
@@ -396,24 +397,34 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера м
 //----------------------------------------------------------------
 void SIM900_SendHistory(void)                     // Отошлем на сервер историю событий
 {
+	uint16_t ptr;
   if(SIM900Status < SIM900_GPRS_OK) return;
-  uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 60);
-  uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 60);
+	for(ptr = 0; History[ptr].EventCode == EVENT_NONE && ptr < HISTORYLENGTH; ptr ++);  // Ищем первое непустое событие
+	if(ptr == HISTORYLENGTH) return; // В истории нет неотосланных событий
+	for(; History[ptr].EventCode != EVENT_NONE && ptr < HISTORYLENGTH; ptr ++)
+	{
 
-  strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=sendHistory\"");
-
-  uart_send(query);
-  waitAnswer("OK", 60);
-  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
-  waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
-}
-//----------------------------------------------------------------
-void RecToHistory(uint8_t eventCode)              // Запишем в историю событие
-{
-  
+		uart_send("AT+HTTPINIT");
+		waitAnswer("OK", 60);
+		uart_send("AT+HTTPPARA=\"CID\",1");
+		waitAnswer("OK", 60);
+		strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=sh&ts=");
+		itoa(History[ptr].EventTime.yy, strS, 10); strcat(query, strS);
+		if(History[ptr].EventTime.MM < 10)strcat(query, "0"); itoa(History[ptr].EventTime.MM, strS, 10); strcat(query, strS);
+		if(History[ptr].EventTime.dd < 10)strcat(query, "0"); itoa(History[ptr].EventTime.dd, strS, 10); strcat(query, strS);
+		if(History[ptr].EventTime.hh < 10)strcat(query, "0"); itoa(History[ptr].EventTime.hh, strS, 10); strcat(query, strS);
+		if(History[ptr].EventTime.mm < 10)strcat(query, "0"); itoa(History[ptr].EventTime.mm, strS, 10); strcat(query, strS);
+		if(History[ptr].EventTime.ss < 10)strcat(query, "0"); itoa(History[ptr].EventTime.ss, strS, 10); strcat(query, strS);
+		strcat(query, "&ec="); 
+		itoa(History[ptr].EventCode, strS, 10); strcat(query, strS);
+		strcat(query, "\"");
+		uart_send(query);
+		waitAnswer("OK", 60);
+		uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+		waitMessage(); dropMessage();     // Отбросим эхо
+		waitMessage(); dropMessage();     // Отбросим "ОК"
+		History[ptr].EventCode = EVENT_NONE;
+	}
 }
 //----------------------------------------------------------------
 /*			static uint8_t smsNun = 0;
