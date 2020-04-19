@@ -50,7 +50,7 @@ int main(void)
   SIM900Status = SIM900_NOTHING;
 	MenuMode = MD_STAT;
 	LightLeft = LIGHT_TIME; LIGHT_ON;	// Сразу включим подсветку
-	PumpPause = 0;
+	State.PumpPause = 0;
 	Seconds = 0;
 	CheckUPause = 0;
 	SilentLeft = FIRST_CONNECT_DELAY;
@@ -70,8 +70,8 @@ int main(void)
 	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 //	if(1) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
-  	options.FrostFlag = 0;
-  	options.PumpWorkFlag = 0;
+  	options.FrostFlag = 0;											// Флаг о возможной заморозке насоса
+  	options.PumpWorkFlag = 0;										// Флаг, что в данный момент насос включен
     options.fFreezeNotifications = 0;           // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
     options.fWarmNotifications = 0;             // Флаги оповещения о перегреве.
     options.fDoorNotifications = 0;             // Флаги оповещения об открытии двери.
@@ -106,7 +106,7 @@ int main(void)
   //Save();
 
 	if(options.PumpWorkFlag == 1 && options.PumpTimeLeft != 0)		// Если до длительного отключения насос был включен
-	PumpPause = PUMP_RESTART_PAUSE/2;						// На всякий случай подождем ещ половину "паузы перед включением"
+	State.PumpPause = PUMP_RESTART_PAUSE/2;						// На всякий случай подождем ещ половину "паузы перед включением"
     
   uart_init();
   spi_init();
@@ -196,7 +196,7 @@ void OneMoreMin(void)
   }  
 
   if(State.Vbat < 660){         // 3.3V
-    //uart_send("AT+CPOWD=1");   // Выключим модуль
+    uart_send("AT+CPOWD=1");   // Выключим модуль
   }
 }
 //---------------------------------------------------------------------
@@ -216,7 +216,7 @@ void OneMoreSec(void)
     }
   }
 
-  if(PumpPause > 0) PumpPause --;	// Отсчитываем паузу перед повторным включением насоса
+  if(State.PumpPause > 0)State. PumpPause --;	// Отсчитываем паузу перед повторным включением насоса
   if(options.PumpWorkFlag == 1 && (PORTC & 0b00010000) == 0 ) // Если насос должен быть включен, но он вЫключен,
   {
     a = options.PumpTimeLeft;										// Сохраним оставшееся время
@@ -228,17 +228,17 @@ void OneMoreSec(void)
   if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; Save(); MenuMode = MD_STAT;}
 
       // ????????????
-  if(PumpPause != 0 && options.PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
+  if(State.PumpPause != 0 && options.PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
   {
     Seconds --;
     return;
   }
   
-  if(Seconds == 33){         // Каждую 56 секунду
+  if(Seconds == 33){         // Каждую 33 секунду
     sensor_write(0x44);   // старт измерения температуры
   }
 
-  if(Seconds == 35){     // Каждую 58 секунду - чтение температуры
+  if(Seconds == 35){     // Каждую 35 секунду - чтение температуры
     State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
     //  Temp >>= 4; // 4
     if(State.Temp <= options.HeaterOnTemp*16) HeaterStart();	//
@@ -253,12 +253,12 @@ void OneMoreSec(void)
     
     if(options.PumpWorkDuration != 0 && options.PumpRelaxDuration != 0)	//Проверим что время работы и отдыха насоса не равно 0. Если равно - никакого автоматического включения/выключения!
     {
-      options.PumpTimeLeft --;
+      if(State.PowerFailFlag == 0 || options.PumpWorkFlag == 0) options.PumpTimeLeft --; // Если питание ОК или насос отдыхает
       if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 1)PumpStop();   // Закончилось время работы насоса
       if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0)              // Закончилось время отдыха насоса
         if(PumpStart() == 0)    // Если запуск насоса не удался
         {
-          //LCD_gotoXY(0, 2); LCD_writeString(str);		//Если старт насоса вернул ошибку - отобразим её
+          LCD_gotoXY(0, 2); LCD_writeString(strD);		//Если старт насоса вернул ошибку - отобразим её
           options.PumpTimeLeft ++; 									//И подождем еще одну минуту
         }
     }
@@ -269,7 +269,13 @@ void OneMoreSec(void)
 	measureBattery();  
 
 	if(MenuMode == MD_STAT)ShowStat();
-  
+	
+	if(State.PowerFailFlag == 1){			// Если питание отключили
+		if(PINB & 0b00000100){						// Потом снова включили
+			if(State.PowerFailSecCount > 0)  State.PowerFailSecCount--; // держим паузу перед признанием питания полностью восстановленным
+			else OnPowerRestore();  
+		}
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -286,12 +292,9 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 	bstat = PIND & 0b01111000;	// Дальше обрабатывать нажатие будет OnKeyPress()
 }
 //------------------------------------------------------------------------------
-ISR(INT2_vect)   //CLK от клавы                          Отключение питания
+ISR(INT2_vect)   //                           Отключение питания
 {
-	LightLeft = LIGHT_TIME;			// Включим подсветку сразу чтобы показать, что не висит
-	LIGHT_ON;
-	State.PowerFailFlag = 1;
-	PumpStop();
+	OnPowerFail();
 }
 //------------------------------------------------------------------------------
 ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц)
@@ -447,7 +450,7 @@ void OnKeyPress(void)
 			case MD_CLEAR:			// Забыть статистику
 			{
 				options.FrostFlag = 0;
-				PumpPause = 0;
+				State.PumpPause = 0;
 				MenuMode = MD_STAT;
 				DrawMenu();
 				break;
@@ -679,14 +682,15 @@ void PumpStop(void)
   options.PumpTimeLeft = options.PumpRelaxDuration;
   options.PumpWorkFlag = 0;
   PORTC &= 0b11101111;			// вЫключим насос (он на PC4)
-  if(PumpPause < 1) PumpPause = PUMP_RESTART_PAUSE;
+  if(State.PumpPause < 1) State.PumpPause = PUMP_RESTART_PAUSE;
 }
 //---------------------------------------------------------------------
 uint8_t PumpStart(void)
 {
   if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return 0;}
   if(options.FrostFlag == 1){strcpy(strD, "Возм.заморозка"); return 0;}
-  if(PumpPause > 0){ strcpy(strD, "Пауза "); itoa(PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return 0;}
+  if(State.PumpPause > 0){ strcpy(strD, "Пауза "); itoa(State.PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return 0;}
+	if(State.PowerFailFlag == 1){ strcpy(strD, "ОтсутстЭлектич"); return 0;}
   options.PumpTimeLeft = options.PumpWorkDuration;
   CheckUPause = 20;		// 2 секунды не проверять питающее напряжение!
   options.PumpWorkFlag = 1;
@@ -817,10 +821,10 @@ void ShowStat(void)
     strD[3] = 0x80; strD[4] = 0x81;
     strcat(buf, strD);
   }
-  if(PumpPause != 0 && options.PumpWorkFlag == 1)
+  if(State.PumpPause != 0 && options.PumpWorkFlag == 1)
   {
     strcpy(buf, "Пауза ");
-    itoa(PumpPause/10, strD, 10);
+    itoa(State.PumpPause/10, strD, 10);
     strcat(buf, strD);
     strcat(buf, " сек.   ");
   }
@@ -829,7 +833,7 @@ void ShowStat(void)
 	}
 	LCD_gotoXY(0, 2);	
 	if(State.PowerFailFlag == 0) LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
-	else LCD_writeString("Сбой электр-ия");
+	else LCD_writeString("Сбой элект-ния");
 
 	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, strD, 10); strcat(buf, strD); strcat(buf, "v ");
 	if(SilentLeft >180){
@@ -915,3 +919,25 @@ void strcpyPM(char *dest, const char *PMsrc)		// Копирует строку из PROGMEM в de
 	
 }
 //---------------------------------------------------------------------
+void OnPowerFail(void)
+{
+	LightLeft = LIGHT_TIME;			// Включим подсветку сразу показать, что не висит
+	LIGHT_ON;
+	State.PowerFailFlag = 1;
+	if(options.PumpWorkFlag == 1){
+		//options.PumpWorkFlag = 0;  // Выключим насос, но флаг работы оставим, чтобы знать, что после восст питания его нужно включить
+		PORTC &= 0b11101111;			// вЫключим насос (он на PC4)
+		if(State.PumpPause < 1) State.PumpPause = PUMP_RESTART_PAUSE;
+	}
+	State.PowerFailSecCount = UNSTABLE_POWER_DELAY;
+	
+}
+//---------------------------------------------------------------------
+void OnPowerRestore(void)
+{
+	State.PowerFailFlag = 0;	
+}
+//---------------------------------------------------------------------
+
+
+//  options.PumpTimeLeft = options.PumpRelaxDuration;

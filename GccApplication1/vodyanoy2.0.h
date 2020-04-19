@@ -80,10 +80,11 @@
 #define EVENT_PUMP_CAN_FREEZE				31  // Запуск насоса не разрешен из-за возможной заморозки
 #define EVENT_OTHER									32  // Все остальные события
 
-#define LIGHT_TIME						30		// Время работы подсветки. В сек
+#define LIGHT_TIME						10		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
 #define FIRST_CONNECT_DELAY		25 		// Время в секундах от включения устройства до первой попытки связи с сервером
+#define UNSTABLE_POWER_DELAY	10		// Время в секундах которое должно пройти после включения питания, чтобы система начала считать питание стабильным.
 
 #define LIGHT_ON	PORTB &= ~(1 << 3)
 #define LIGHT_OFF PORTB |= (1 << 3)
@@ -104,6 +105,9 @@ struct TState {
 	uint8_t PowerFailFlag;	//Флаг отказа питания
 	uint8_t OpenDoorFlag;		//Флаг открытой двери
 	uint8_t FloodingFlag;		//Флаг затопления
+	uint16_t PowerFailSecCount; // Счетчик секунд до момента, когда питание можно считать стабильным
+	uint16_t PumpPause;			    // Задержка перед повторным включением насоса в сек
+	
 }State;
 
 struct TSettings {          // Структура для хранения всех сохраняемых в eeprom настроек и переменных.
@@ -160,6 +164,8 @@ ISR(ADC_vect);          // Завершение преобразования АЦП
 void ShowStat(void);
 void MinToStr(uint16_t Min, char *str);		// Переводит количество минут в строку hh:mm
 void OnKeyPress(void);					// Вызывается из главного цикла если обработчик прерываний клавы выставил флаг нажатия.
+void OnPowerFail(void);
+void OnPowerRestore(void);
 void DrawMenu(void);
 void Save(void);								// Записывает в память текущие настройки
 void PumpStop(void);
@@ -208,8 +214,7 @@ uint8_t								LightLeft, 					// Сколько осталось работать подсветке в сек.
 											CheckUPause, 				// Задержка проверки питающего напряжения при старте насоса в сек/10
 											BtStat,							// Состояние кнопок
 											Seconds;						// Счетчик секунд из функции OneMoreSec()
-uint16_t							PumpPause,			    // Задержка перед повторным включением насоса в сек
-											Volts;
+uint16_t							Volts;
 volatile uint32_t			SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
 int8_t								MenuMode,						// Номер текущего режима меню
 											SIM900Status,				// Cостояние связи
