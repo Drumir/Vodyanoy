@@ -71,11 +71,12 @@
     }               
   }
   
-  if($act == "wT") {
+  if($act == "sS") {
     $temp = stripslashes($_GET['t']); 
     $Vbat = stripslashes($_GET['vb']); 
     $balance = stripslashes($_GET['b']); 
-    $query = "INSERT INTO stats (balance, Vbat, temp) VALUES (".$balance.", ".$Vbat.", ".$temp.")";    
+    $flags = stripslashes($_GET['f']); 
+    $query = "INSERT INTO stats (balance, Vbat, temp, flags) VALUES (".$balance.", ".$Vbat.", ".$temp.", ".$flags.")";    
     $result = mysqli_query ($link, $query);
 
     //$query = "UPDATE stats SET balance=".$balance.", Vbat=".$Vbat.", temp=".$temp." WHERE id = 1";

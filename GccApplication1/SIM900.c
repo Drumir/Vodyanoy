@@ -57,13 +57,22 @@ void SIM900_SendStatus(void)
   itoa(State.Temp, strS, 10);
   strcpy(query, "AT+HTTPPARA=\"URL\",\"");
   strcat(query, options.Link);
-  strcat(query, "?act=wT&t=");
+  strcat(query, "?act=sS&t=");
   strcat(query, strS);
   strcat(query, "&vb=");
   itoa(State.Vbat, strS, 10);
   strcat(query, strS);
   strcat(query, "&b=");
   itoa(State.balance, strS, 10);
+  strcat(query, strS);
+	uint8_t f = 0;
+  if(PORTC & 0b00010000)				{f |= 0b00000001;}		// Насос запущен
+  if(PORTC & 0b00000100)				{f |= 0b00000010;}		// Обогрев Включен
+  if(State.PowerFailFlag == 0)	{f |= 0b00000100;}		// Питание присутствует
+  if(1)													{f |= 0b00001000;}		// Дверь закрыта
+  if(1)													{f |= 0b00010000;}		// Потоп отсутствует
+  strcat(query, "&f=");
+  itoa(f, strS, 10);
   strcat(query, strS);
   strcat(query, "\"");
   uart_send(query);
@@ -301,7 +310,7 @@ void SIM900_SendSettings(void)                    // Отсылает настройки на серве
 
 }
 //----------------------------------------------------------------
-void SIM900_GetSettings(void)                     // Берет настройки с сервера м применяет их
+void SIM900_GetSettings(void)                     // Берет настройки с сервера и применяет их
 {
   uint16_t commaPosition = 0;
   if(SIM900Status < SIM900_GPRS_OK) return;

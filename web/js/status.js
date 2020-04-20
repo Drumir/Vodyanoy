@@ -103,6 +103,38 @@ function GetStats(){
 
 function cbSqlGetStatsSuccess(data, textStatus) {      // Прочитаем статус с сервера
   if(data.status == "success"){   
+
+    document.getElementById("pumpStatus").innerText = "Остановлен"; 
+    if(data.result[0].flags & 0b00000001){
+        document.getElementById("pumpStatus").innerText = "Запущен"; 
+    }
+    
+    document.getElementById("warmStatus").innerText = "вЫключен"; 
+    if(data.result[0].flags & 0b00000010){
+        document.getElementById("warmStatus").innerText = "Включен"; 
+    }
+    
+    document.getElementById("supplyStatus").innerText = "Отутствует"; 
+    document.getElementById("supplyStatus").style.backgroundColor = "RED";
+    if(data.result[0].flags & 0b00000100){
+        document.getElementById("supplyStatus").innerText = "ОК"; 
+        document.getElementById("supplyStatus").style.backgroundColor = "Lime";
+    }
+
+    document.getElementById("doorStatus").innerText = "Открыта"; 
+    document.getElementById("doorStatus").style.backgroundColor = "RED";
+    if(data.result[0].flags & 0b00001000){
+        document.getElementById("doorStatus").innerText = "Закрыта"; 
+        document.getElementById("doorStatus").style.backgroundColor = "Lime";
+    }
+
+    document.getElementById("floodStatus").innerText = "Затоплено"; 
+    document.getElementById("floodStatus").style.backgroundColor = "RED";
+    if(data.result[0].flags & 0b00010000){
+        document.getElementById("floodStatus").innerText = "Сухо"; 
+        document.getElementById("floodStatus").style.backgroundColor = "Lime";
+    }
+
     document.getElementById("balanceStatus").innerText = data.result[0].balance + " руб."; 
     document.getElementById("balanceStatus").style.backgroundColor = RangeToColor(0, 120, "RG", data.result[0].balance);
 
