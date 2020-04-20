@@ -150,9 +150,8 @@ int main(void)
   {
 	if(OneMoreSecCount > 0) OneMoreSec();
 	if(bstat) OnKeyPress();
-
 	CheckIncomingMessages();
-
+	CheckNotifications();
     if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
     {
       SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
@@ -188,7 +187,26 @@ int main(void)
 void OneMoreMin(void)
 {
   static uint8_t Min = 0;
-  Min ++;
+    
+  if(options.PumpWorkDuration != 0 && options.PumpRelaxDuration != 0)	//Проверим что время работы и отдыха насоса не равно 0. Если равно - никакого автоматического включения/выключения!
+  {
+	  if(State.PowerFailFlag == 0 || options.PumpWorkFlag == 0)						// Если питание ОК или насос отдыхает
+	  options.PumpTimeLeft --;
+	  if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 1){					// Закончилось время работы насоса
+		  PumpStop();RecToHistory(EVENT_PUMP_STOP_AUTO);
+	  }
+	  if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0){             // Закончилось время отдыха насоса
+		  if(PumpStart() == 0)    // Если запуск насоса не удался
+		  {
+			  LCD_gotoXY(0, 2); LCD_writeString(strD);		//Если старт насоса вернул ошибку - отобразим её
+			  options.PumpTimeLeft ++; 									//И подождем еще одну минуту
+		  }
+		  else
+		  RecToHistory(EVENT_PUMP_START_AUTO);
+	  }
+  }
+
+	Min ++;
   if (Min == 60)
   {
     Min = 0;
@@ -245,29 +263,15 @@ void OneMoreSec(void)
   if(Seconds == 35){     // Каждую 35 секунду - чтение температуры
     State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
     //  Temp >>= 4; // 4
-    if(State.Temp <= options.HeaterOnTemp*16){ HeaterStart(); RecToHistory(EVENT_HEATER_START_AUTO);}	//
-    if(State.Temp >= options.HeaterOffTemp*16){ HeaterStop(); RecToHistory(EVENT_HEATER_STOP_AUTO);}	// При необходимости включим или выключим обогреватель
-    if(State.Temp < -3 && options.PumpWorkFlag == 0) options.FrostFlag = 1;
+    if((PORTC & 0b00000100) == 0 && State.Temp <= options.HeaterOnTemp*16){ HeaterStart(); RecToHistory(EVENT_HEATER_START_AUTO);}	//
+    if((PORTC & 0b00000100) != 0 && State.Temp >= options.HeaterOffTemp*16){ HeaterStop(); RecToHistory(EVENT_HEATER_STOP_AUTO);}	// При необходимости включим или выключим обогреватель
+    if(State.Temp < -3 && options.PumpWorkFlag == 0 && options.FrostFlag != 1){ options.FrostFlag = 1; RecToHistory(EVENT_FREEZE);}
   }
 
 
   if(Seconds == 60)			// Прошла еще одна минута
   {
     Seconds = 0;
-    
-    if(options.PumpWorkDuration != 0 && options.PumpRelaxDuration != 0)	//Проверим что время работы и отдыха насоса не равно 0. Если равно - никакого автоматического включения/выключения!
-    {
-      if(State.PowerFailFlag == 0 || options.PumpWorkFlag == 0) options.PumpTimeLeft --; // Если питание ОК или насос отдыхает
-      if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 1)PumpStop();   // Закончилось время работы насоса
-      if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0){             // Закончилось время отдыха насоса
-				RecToHistory(EVENT_PUMP_START_AUTO);
-        if(PumpStart() == 0)    // Если запуск насоса не удался
-        {
-          LCD_gotoXY(0, 2); LCD_writeString(strD);		//Если старт насоса вернул ошибку - отобразим её
-          options.PumpTimeLeft ++; 									//И подождем еще одну минуту
-        }
-			}
-    }
     OneMoreMin();
   }
   if(SilentLeft > 0) SilentLeft --;     // Счетчик секунд до сеанса связи
@@ -798,6 +802,7 @@ void DrawMenu(void)
 			itoa(options.localSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(options.localSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 4);LCD_writeString(buf);
+			LCD_gotoXY(0, 5);LCD_writeString(options.AdminTel);
 			
 		}
   }
@@ -933,7 +938,11 @@ void OnPowerFail(void)
 		PORTC &= 0b11101111;			// вЫключим насос (он на PC4)
 		if(State.PumpPause < 1) State.PumpPause = PUMP_RESTART_PAUSE;
 	}
-	if(State.PowerFailSecCount == 0) RecToHistory(EVENT_AC_FAIL);	// Чтобы не было повторных записей при частых отключениях
+	if(State.PowerFailSecCount == 0)
+	{
+		RecToHistory(EVENT_AC_FAIL);	// Чтобы не было повторных записей при частых отключениях
+		Notifications.PowerFail = 1;
+	}
 	State.PowerFailSecCount = UNSTABLE_POWER_DELAY;
 }
 //---------------------------------------------------------------------
@@ -941,6 +950,7 @@ void OnPowerRestore(void)
 {
 	State.PowerFailFlag = 0;	
 	RecToHistory(EVENT_AC_RESTORE);
+	Notifications.PowerRestore = 1;
 }
 //---------------------------------------------------------------------
 void RecToHistory(uint8_t eventCode)
@@ -953,8 +963,78 @@ void RecToHistory(uint8_t eventCode)
 	History[historyPtr].EventTime.ss = Now.ss;
 	History[historyPtr].EventCode = eventCode;
 	historyPtr ++;
-	if(historyPtr == HISTORYLENGTH) historyPtr = 0;
-
+	if(historyPtr == HISTORYLENGTH) historyPtr = 0; // При заполнении буфера истории просто начинаем заполнять его с начала
 }
 
 //  options.PumpTimeLeft = options.PumpRelaxDuration;
+//---------------------------------------------------------------------
+void CheckNotifications(void)
+{
+	if(Notifications.Freeze != 0)
+	{
+		if(options.fFreezeNotifications & 0b00001100) // Смс Оператору или админу
+		{
+			strcpyPM(buf, MSG_Freezing);
+			if(options.fFreezeNotifications & 0b00001000) // Смс Оператору
+			SIM9000_SendSMS(options.OperatorTel, buf);
+			if(options.fFreezeNotifications & 0b00000100) // Смс Админу
+			SIM9000_SendSMS(options.AdminTel, buf);
+		}
+		if(options.fFreezeNotifications & 0b00000010) // Звонок Оператору
+		SIM900_Call(options.OperatorTel);
+		if(options.fFreezeNotifications & 0b00000001) // Звонок Админу
+		SIM900_Call(options.AdminTel);
+	}
+	
+	if(Notifications.Warm != 0)
+	{
+		if(options.fWarmNotifications & 0b00001100) // Смс Оператору или админу
+		{
+			strcpyPM(buf, MSG_Warming);
+			if(options.fWarmNotifications & 0b00001000) // Смс Оператору
+			SIM9000_SendSMS(options.OperatorTel, buf);
+			if(options.fWarmNotifications & 0b00000100) // Смс Админу
+			SIM9000_SendSMS(options.AdminTel, buf);
+		}
+		if(options.fWarmNotifications & 0b00000010) // Звонок Оператору
+		SIM900_Call(options.OperatorTel);
+		if(options.fWarmNotifications & 0b00000001) // Звонок Админу
+		SIM900_Call(options.AdminTel);
+	}
+	
+	if(Notifications.PowerFail != 0)
+	{
+		if(options.fPowerNotifications & 0b00001100) // Смс Оператору или админу
+		{
+			strcpyPM(buf, MSG_PowerLost);
+			if(options.fPowerNotifications & 0b00001000) // Смс Оператору
+			SIM9000_SendSMS(options.OperatorTel, buf);
+			if(options.fPowerNotifications & 0b00000100) // Смс Админу
+			SIM9000_SendSMS(options.AdminTel, buf);
+		}
+		if(options.fPowerNotifications & 0b00000010) // Звонок Оператору
+		SIM900_Call(options.OperatorTel);
+		if(options.fPowerNotifications & 0b00000001) // Звонок Админу
+		SIM900_Call(options.AdminTel);
+		
+		Notifications.PowerFail = 0;
+	}
+
+	if(Notifications.PowerRestore != 0)
+	{
+		if(options.fPowerRestNotifications & 0b00001100) // Смс Оператору или админу
+		{
+			strcpyPM(buf, MSG_PowerRestore);
+			if(options.fPowerRestNotifications & 0b00001000) // Смс Оператору
+			SIM9000_SendSMS(options.OperatorTel, buf);
+			if(options.fPowerRestNotifications & 0b00000100) // Смс Админу
+			SIM9000_SendSMS(options.AdminTel, buf);
+		}
+		if(options.fPowerRestNotifications & 0b00000010) // Звонок Оператору
+		SIM900_Call(options.OperatorTel);
+		if(options.fPowerRestNotifications & 0b00000001) // Звонок Админу
+		SIM900_Call(options.AdminTel);
+		
+		Notifications.PowerRestore = 0;
+	}
+}

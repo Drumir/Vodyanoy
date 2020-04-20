@@ -109,6 +109,18 @@ struct TState {
 	
 }State;
 
+struct TNotifications {
+	uint8_t Freeze,
+					Warm,
+					Door,
+					Flood,
+					PowerFail,
+					PowerRestore,
+					Offline,
+					Balance,
+					Daily;
+	}Notifications;
+
 struct TSettings {          // Структура для хранения всех сохраняемых в eeprom настроек и переменных.
   uint8_t       FrostFlag,		            // Флаг того, что температура падала до -3*С и, возможно, насос замерз.
   PumpWorkFlag,             // Флаг, что в данный момент насос должен работать
@@ -176,14 +188,15 @@ void PumpStop(void);
 uint8_t PumpStart(void);							// Возвращает 1 если успешно. Иначе 0;
 void HeaterStart(void);
 void HeaterStop(void);
-void OneMoreMin(void);							// Еще одна минута прошла.
-void OneMoreSec(void);							// Еще одна секунда прошла.
-int AdcToVolts(int A);							// Преобразует измеренное АЦП напряжение в Вольты
+void OneMoreMin(void);									// Еще одна минута прошла.
+void OneMoreSec(void);									// Еще одна секунда прошла.
+int AdcToVolts(int A);									// Преобразует измеренное АЦП напряжение в Вольты
 void RecToHistory(uint8_t eventCode);
-uint8_t ConnectToServer(void);      // Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
+uint8_t ConnectToServer(void);					// Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
 void SoftReset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
-void measureBattery(void);					// Измеряет напряжение аккумулятора, записывает его в state.vBat
-void CheckIncomingMessages(void);		// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
+void measureBattery(void);							// Измеряет напряжение аккумулятора, записывает его в state.vBat
+void CheckIncomingMessages(void);				// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
+void CheckNotifications(void);	// Проверяет наличие несделаных оповещений
 
 
 uint8_t waitAnswer(char *answer, uint16_t timeout);
@@ -209,6 +222,8 @@ void SIM900_SendSettings(void);                    // Отсылает настройки на серв
 void SIM900_GetSettings(void);                     // Берет настройки с сервера м применяет их
 void SIM900_SendStatus(void);                      // Отошлем на сервер текущее состояние
 void SIM900_SendHistory(void);                     // Отошлем на сервер историю событий
+void SIM9000_SendSMS(char *number, char *text);	   // Отсылает смс с текстом text на номер number
+void SIM900_Call(char *number);										 // Звонит на номер number. При ответе сбрасывает
 
 
 uint8_t								LightLeft, 					// Сколько осталось работать подсветке в сек.
@@ -253,6 +268,9 @@ static const char MSG_Successful[]		PROGMEM = "   Успешно    ";
 static const char MSG_Blank[]					PROGMEM = "              ";
 static const char MSG_ToReset[]				PROGMEM = "   Сбросить   ";
 static const char MSG_Freezing[]			PROGMEM = "Возм.заморозка";
+static const char MSG_Warming[]				PROGMEM = "  Peregrev!   ";
+static const char MSG_PowerLost[]			PROGMEM = "Elektropitanie otklu4eno!";
+static const char MSG_PowerRestore[]	PROGMEM = "Elektropitanie vostanovleno";
 static const char MSG_RightNow[]			PROGMEM = " Прямо сейчас ";
 static const char MSG_WorkRelax[]			PROGMEM = " Работ  Стоит ";
 static const char MSG_OnOff[]					PROGMEM = "  ВКЛ   ВыКЛ  ";

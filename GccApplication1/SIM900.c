@@ -43,8 +43,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
     }  
   }  
 }
-
-
+//----------------------------------------------------------------
 void SIM900_SendStatus(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
@@ -197,7 +196,7 @@ void SIM900_EnableGPRS(void)
 
   do{
     iterations ++;
-    _delay_ms(1500);
+    _delay_ms(500);
     uart_send("AT+SAPBR=1,1");
   } while(waitAnswer("OK", 60) != 1 && iterations < 30);
   SIM900Status = SIM900_GPRS_OK;
@@ -423,10 +422,47 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
 		uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
 		waitMessage(); dropMessage();     // Отбросим эхо
 		waitMessage(); dropMessage();     // Отбросим "ОК"
+		waitMessage(); dropMessage();			// Отбросим +HTTPACTION:0,200,32
+		uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
+		waitMessage(); dropMessage();     // Отбросим эхо
+		waitMessage(); dropMessage();     // Отбросим "ОК"
 		History[ptr].EventCode = EVENT_NONE;
 	}
 }
 //----------------------------------------------------------------
+void SIM9000_SendSMS(char *number, char *text)	   // Отсылает смс с текстом text на номер number
+{
+  if(SIM900Status < SIM900_GSM_OK) return;
+	strcpy(strS, "AT+CMGS=\"+7");
+	strcat(strS, number);
+	strcat(strS, "\"");
+	uart_send(strS);
+	waitMessage(); dropMessage();     // Отбросим эхо
+	_delay_ms(500);
+	text[strlen(text)] = 26;
+	uart_send(text);
+	waitMessage(); dropMessage();     // Отбросим эхо
+	waitMessage(); dropMessage();     // Отбросим +CMGS: 2  Здесь 2 - номер сообщения, которое сохранилось во входящих
+	waitAnswer("OK", 60);
+	uart_send("AT+CMGD=4");			// Удаляем вообще все сообщения
+	waitMessage();dropMessage();        // Выбрасываем эхо
+	waitMessage();dropMessage();				// Выбрасываем ОК
+
+	
+}
+//----------------------------------------------------------------
+void SIM900_Call(char *number)										 // Звонит на номер number. 
+{
+  if(SIM900Status < SIM900_GSM_OK) return;
+	strcpy(strS, "ATD+7");
+	strcat(strS, number);
+	strcat(strS, ";");
+	uart_send(strS);
+	waitMessage(); dropMessage();     // Отбросим эхо
+	waitMessage(); dropMessage();     // Отбросим ОК
+}
+//----------------------------------------------------------------
+
 /*			static uint8_t smsNun = 0;
 			if (smsNun == 0)
 			{
