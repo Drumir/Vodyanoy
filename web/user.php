@@ -43,6 +43,25 @@
       }
     }
   }
+
+  if($act == "getHistory"){
+//    $query = "SELECT * FROM `stats`";    // Подумать об экранировании с помощью mysqli_real_escape_string()
+    $query = "SELECT * FROM history ORDER BY timestamp DESC LIMIT 144";     // Получить одну (первую) запись из таблицы stats отсортированной по timestamp
+    $result = mysqli_query($link, $query);
+    if(!$result){
+      $answer["status"] = "fail";
+      $answer["result"][0] = mysqli_error($link); 
+    }                
+    else {
+      $answer["status"] = "success";
+      $i = 0;
+      while($row = mysqli_fetch_object($result)){
+        $answer["result"][$i] = $row;                       
+        $i ++;    
+      }
+    }
+  }
+
   if($act == "readChart"){
 //    $query = "SELECT * FROM `temps` WHERE time > 0";    // Подумать об экранировании с помощью mysqli_real_escape_string()
     $query = "SELECT * FROM stats ORDER BY timestamp DESC LIMIT 144";    // Подумать об экранировании с помощью mysqli_real_escape_string()
