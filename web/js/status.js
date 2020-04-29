@@ -15,18 +15,19 @@ window.onload = function() {          //
   document.getElementById('aBatterySwitch').onclick = onBatteryChartSwitchClick;  
   
   GetStats();
-  ReadChartFromServer();  
+  //ReadChartFromServer();  
   setInterval(oneMoreMinute, 60000); 
 } 
 
 function onBatteryChartSwitchClick(){
-    if(this.innerText == "Подробнее"){
+    if(this.innerText == "Подробнее"){ 
+        ReadChartFromServer();
         this.innerText = "Свернуть";
-        document.getElementById('batteryChart').height = 200;
+        document.getElementById('batteryChart').height = 400;
     }
     else{
         this.innerText = "Подробнее";
-        document.getElementById('batteryChart').height = 200;
+        document.getElementById('batteryChart').height = 0;
     }
 }
 
@@ -237,7 +238,7 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем и
     data.result[i].tt = Number(data.result[i].tt)/16;    
   }  */ 
   
-    $('#chart').dxChart({
+    $('#batteryChart').dxChart({
       dataSource: newData,  
       zoomingMode: "mouse",
       
@@ -264,7 +265,7 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем и
       valueAxis: [{
           name: "температура",
           position: "left",  
-          showZero: true,
+//          showZero: true,
 //          tickInterval: 1,
           label: {
             customizeText: function () {
@@ -276,8 +277,8 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем и
       {
           name: "напряжение",
           position: "right",
-          min: 3.2,
-          max: 4.1,
+          min: 2.5,
+          max: 4.3,
 //          tickInterval: 0.1,   
 //          maxValueMargin: 0.1,
           label: {
@@ -291,9 +292,10 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем и
           grid:{
               visible: true
           },
-//          label: {
-//            format: "shortDate"
-//          }
+          label: {
+            format: "d MMM HH:mm"
+//            format: "shortDateShortTime"
+          },
 
       },
       tooltip:{
@@ -319,4 +321,3 @@ function cbSqlReadChartSuccess(data, textStatus) {      // Прочитаем и
 function cb16mbError(){
   document.getElementById("lastConnection").innerText = "ServerError"  
 }
-

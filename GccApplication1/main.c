@@ -150,9 +150,9 @@ int main(void)
   {
 	if(OneMoreSecCount > 0) OneMoreSec();
 	if(bstat) OnKeyPress();
-	CheckIncomingMessages();
-	CheckNotifications();
-    if(SilentLeft == 0)    // Счетчик секунд до сеанса связи
+	CheckIncomingMessages();            // Проверим буфер принятых от SIM900 сообщений на предмет необработанных
+	CheckNotifications();               // Проверим не произошло ли какое-то событие о котором нужно уведомить админа/оператора 
+    if(SilentLeft == 0 && options.ConnectPeriod != 0)    // Проверим не пора ли организовать сеанс связи
     {
       SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
        

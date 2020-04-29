@@ -197,7 +197,9 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
   params.timestamp = str;    
   */
   
-  params.action = "writeSettings";
+  params.action = "writeSettings"; 
+
+  $("#backgroundPopup").fadeIn("fast");
   
   $.ajax({
     url: sqlServerAdress,
@@ -212,3 +214,8 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
 
 function cb16mbError(){
 }
+
+function cbSqlWriteValueSuccess(){
+
+  $("#backgroundPopup").fadeOut("fast");
+  }
