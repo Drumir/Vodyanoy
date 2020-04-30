@@ -61,7 +61,7 @@ int main(void)
 	State.FloodingFlag = 0;
 	historyPtr = 0;
 	for(uint16_t i = 0; i < HISTORYLENGTH; i ++)		// Очистим буфер истории
-		History[historyPtr].EventCode = EVENT_NONE;
+		History[i].EventCode = EVENT_NONE;
 
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
@@ -75,6 +75,7 @@ int main(void)
 	{
   	options.FrostFlag = 0;											// Флаг о возможной заморозке насоса
   	options.PumpWorkFlag = 0;										// Флаг, что в данный момент насос включен
+		options.DirectControlFlags = 0;
     options.fFreezeNotifications = 0;           // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
     options.fWarmNotifications = 0;             // Флаги оповещения о перегреве.
     options.fDoorNotifications = 0;             // Флаги оповещения об открытии двери.
@@ -152,9 +153,9 @@ int main(void)
 	if(bstat) OnKeyPress();
 	CheckIncomingMessages();            // Проверим буфер принятых от SIM900 сообщений на предмет необработанных
 	CheckNotifications();               // Проверим не произошло ли какое-то событие о котором нужно уведомить админа/оператора 
-    if(SilentLeft == 0 && options.ConnectPeriod != 0)    // Проверим не пора ли организовать сеанс связи
+    if(SilentLeft == 0)    // Проверим не пора ли организовать сеанс связи
     {
-      SilentLeft = options.ConnectPeriod*60;    // Следующий сеанс связи через options.ConnectPeriod минут
+      SilentLeft = options.ConnectPeriod*60 - 1;    // Следующий сеанс связи через options.ConnectPeriod минут
        
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
@@ -172,6 +173,30 @@ int main(void)
           SIM900_GetSettings(); 
 					LCD_gotoXY(0, 4); LCD_writeString("RevewLoclSetts");
 			    SilentLeft = options.ConnectPeriod * 60;		// Обновим период сеансов связи
+					if(options.DirectControlFlags != 0)					// Проверим состояние флагов прямого удаленного управления
+					{
+						if(options.DirectControlFlags && 0b00010000)		// Сбросить состояние заморозки
+							options.FrostFlag = 0;
+						if(options.DirectControlFlags && 0b00001000)		// вЫключить обогреватель
+						{
+							HeaterStop(); RecToHistory(EVENT_HEATER_STOP_REMOTE);
+						}
+						if(options.DirectControlFlags && 0b00000100)		// включить обогреватель
+						{
+							HeaterStart(); RecToHistory(EVENT_HEATER_START_REMOTE);
+						}
+						if(options.DirectControlFlags && 0b00000010)		// вЫключить насос
+						{
+							PumpStop(); RecToHistory(EVENT_PUMP_STOP_REMOTE);
+						}
+						if(options.DirectControlFlags && 0b00000001)		// включить насос
+						{
+							uint8_t eventCode = PumpStart();
+							if(eventCode == EVENT_NONE) RecToHistory(EVENT_PUMP_START_REMOTE);
+							else RecToHistory(eventCode);
+						}
+					options.DirectControlFlags = 0;
+					}
         }
 
 				LCD_gotoXY(0, 4); LCD_writeString("Sending  Stats ");
@@ -196,7 +221,7 @@ void OneMoreMin(void)
 		  PumpStop();RecToHistory(EVENT_PUMP_STOP_AUTO);
 	  }
 	  if(options.PumpTimeLeft <= 0 && options.PumpWorkFlag == 0){             // Закончилось время отдыха насоса
-		  if(PumpStart() == 0)    // Если запуск насоса не удался
+		  if(PumpStart() != EVENT_NONE)    // Если запуск насоса не удался
 		  {
 			  LCD_gotoXY(0, 2); LCD_writeString(strD);		//Если старт насоса вернул ошибку - отобразим её
 			  options.PumpTimeLeft ++; 									//И подождем еще одну минуту
@@ -242,7 +267,7 @@ void OneMoreSec(void)
   if(options.PumpWorkFlag == 1 && (PORTC & 0b00010000) == 0 ) // Если насос должен быть включен, но он вЫключен,
   {
     a = options.PumpTimeLeft;										// Сохраним оставшееся время
-    if(PumpStart() != 0) RecToHistory(EVENT_PUMP_START_AUTO);	// Снова включим насос (Оставшееся время при этом станет равным заданному в расписании)
+    if(PumpStart() == EVENT_NONE) RecToHistory(EVENT_PUMP_START_AUTO);	// Снова включим насос (Оставшееся время при этом станет равным заданному в расписании)
     options.PumpTimeLeft = a;										// Вернем оставшееся время
   }
 
@@ -274,7 +299,7 @@ void OneMoreSec(void)
     Seconds = 0;
     OneMoreMin();
   }
-  if(SilentLeft > 0) SilentLeft --;     // Счетчик секунд до сеанса связи
+  if(SilentLeft > -1) SilentLeft --;     // Счетчик секунд до сеанса связи
 
 	measureBattery();  
 
@@ -475,7 +500,7 @@ void OnKeyPress(void)
 			case MD_DIRPUMP:				// Включить насос вручную
 			{
 				LCD_gotoXY(0, 3);
-				if(PumpStart() == 0) LCD_writeStringInv(strD);	//Если старт насоса вернул ошибку - отобразить её
+				if(PumpStart() != EVENT_NONE) LCD_writeStringInv(strD);	//Если старт насоса вернул ошибку - отобразить её
 				else { LCD_writeString("  Включено    "); RecToHistory(EVENT_PUMP_START_MANUAL);}		// Если все ОК. И сбросим счетчик секунд чтобы новая минута началась с нуля
 				break;
 			}
@@ -628,7 +653,7 @@ void CheckIncomingMessages(void)
 	if(strncmp((char*)rx.buf+rx.ptrs[0], "+CLIP: \"+7", 10) == 0){	// Входящий звонок. Звонки с нероссийских номеров игнорируются
 		if(strncmp((char*)rx.buf+rx.ptrs[0]+10, options.OperatorTel, 10) == 0 || strncmp((char*)rx.buf+rx.ptrs[0]+10, options.AdminTel, 10) == 0)
 		{
-			if(SilentLeft > 5) SilentLeft = 0;	// Срочно организовать сеанс связи с сервером
+			if(SilentLeft > 5) SilentLeft = 1;	// Срочно организовать сеанс связи с сервером
 		}
 		dropMessage();				// Отбросим "+CLIP: "+78312330158",145,"",,"",0"
 		uart_send("ATH0");		// Сбросим вызов
@@ -695,15 +720,15 @@ void PumpStop(void)
 //---------------------------------------------------------------------
 uint8_t PumpStart(void)
 {
-  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return 0;}
-  if(options.FrostFlag == 1){strcpy(strD, "Возм.заморозка"); return 0;}
-  if(State.PumpPause > 0){ strcpy(strD, "Пауза "); itoa(State.PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return 0;}
-	if(State.PowerFailFlag == 1){ strcpy(strD, "ОтсутстЭлектич"); return 0;}
+  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return EVENT_PUMP_FAIL_NO_SCHEDULE;}
+  if(options.FrostFlag == 1){strcpy(strD, "Возм.заморозка"); return EVENT_PUMP_FAIL_FREEZE;}
+  if(State.PumpPause > 0){ strcpy(strD, "Пауза "); itoa(State.PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return EVENT_PUMP_FAIL_NO_AC;}
+	if(State.PowerFailFlag == 1){ strcpy(strD, "ОтсутстЭлектич"); return EVENT_PUMP_FAIL_NO_AC;}
   options.PumpTimeLeft = options.PumpWorkDuration;
   CheckUPause = 20;		// 2 секунды не проверять питающее напряжение!
   options.PumpWorkFlag = 1;
   PORTC |= 0b00010000;	// Включим насос (он на PC4)
-  return 1;
+  return EVENT_NONE;
 }
 //---------------------------------------------------------------------
 void HeaterStart(void)

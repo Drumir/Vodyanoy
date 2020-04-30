@@ -46,36 +46,49 @@
 #define SIM900_HTTP_FAIL      14
 #define SIM900_HTTP_OK        15
 
-#define EVENT_NONE                  0   // Пустое событие
-#define EVENT_BAT_FAIL              1   // Провалена проверка аккумулятора (слишком низкое напряжение)
-#define EVENT_GSM_FAIL              2   // Модуль не может зарегистрироваться в GSM сети (нет сигнала?) 
-#define EVENT_GPRS_FAIL             3   // Модуль не может включить GPRS (отключен интернет?)
-#define EVENT_HTTP_FAIL             4   // Модуль не может подключиться к серверу (проблема  с сервером?)
-#define EVENT_NEW_LOCAL_SETTINGS    5   // Вручную (локально) заданы новые настройки водяного
-#define EVENT_NEW_REMOTE_SETTINGS   6   // Удаленно (через интернет) заданы новые настройки водяного 
-#define EVENT_PUMP_START_AUTO       7   // Старт насоса автоматически (по расписанию или после сбоя AC)
-#define EVENT_PUMP_START_MANUAL     8   // Старт насоса вручную
-#define EVENT_PUMP_START_REMOTE     9   // Старт насоса удаленно
-#define EVENT_PUMP_STOP_AUTO        10  // Отключение насоса по расписанию
-#define EVENT_PUMP_STOP_MANUAL      11  // Отключение насоса вручную
-#define EVENT_PUMP_STOP_REMOTE      12  // Отключение насоса удаленно
-#define EVENT_PUMP_STOP_EMERGENCY   13  // Аварийное отключение насоса
-#define EVENT_HEATER_START_AUTO     15  // Автоматическое включение обогревателя 
-#define EVENT_HEATER_START_MANUAL   16  // Ручное включение обогревателя
-#define EVENT_HEATER_START_REMOTE   17  // Удаленное включение обогревателя
-#define EVENT_HEATER_STOP_AUTO      18  // Автоматическое отключение обогревателя
-#define EVENT_HEATER_STOP_MANUAL    19  // Ручное отключение обогревателя
-#define EVENT_HEATER_STOP_EMERGENCY 20  // Аварийное отключение обогревателя
-#define EVENT_DOOR_OPEN             21  // Открытие входной двери
-#define EVENT_DOOR_CLOSE            22  // Закрытие входной двери
-#define EVENT_AC_FAIL               23  // Отключение электропитания (380В)
-#define EVENT_AC_RESTORE            24  // Возобновление электропитания (380В)
-#define EVENT_FREEZE                25  // Возможно заморозка
-#define EVENT_TOO_HOOT              26  // Перегрев
-#define EVENT_RXB_OVERLOAD          27  // Переполнение приёмного буфера RX
-#define EVENT_HISTORY_OVERLOAD      28  // Переполнение истории
-#define EVENT_START						      29	// Включение водяного
-#define EVENT_OTHER									32  // Все остальные события
+#define EVENT_PUMP_START_AUTO       0   // Старт насоса автоматически (по расписанию или после сбоя AC)
+#define EVENT_PUMP_START_MANUAL     1   // Старт насоса вручную
+#define EVENT_PUMP_START_REMOTE     2   // Старт насоса удаленно
+#define EVENT_PUMP_STOP_AUTO        3		// Отключение насоса по расписанию
+#define EVENT_PUMP_STOP_MANUAL      4		// Отключение насоса вручную
+#define EVENT_PUMP_STOP_REMOTE      5		// Отключение насоса удаленно
+#define EVENT_PUMP_STOP_EMERGENCY   6		// Аварийное отключение насоса
+#define EVENT_PUMP_FAIL_NO_SCHEDULE	7		// Включение насоса не удалось из-за отсутствующего расписания
+#define EVENT_PUMP_FAIL_FREEZE			8		// Включение насоса не удалось из-за заморозки
+#define EVENT_PUMP_FAIL_NO_AC				9		// Включение насоса из-за отсутствующего питания
+
+#define EVENT_HEATER_START_AUTO     10  // Автоматическое включение обогревателя
+#define EVENT_HEATER_STOP_AUTO      11  // Автоматическое отключение обогревателя
+#define EVENT_HEATER_START_MANUAL   12  // Ручное включение обогревателя
+#define EVENT_HEATER_STOP_MANUAL    13  // Ручное отключение обогревателя
+#define EVENT_HEATER_START_REMOTE   14  // Удаленное включение обогревателя
+#define EVENT_HEATER_STOP_REMOTE		15  // Удаленное включение обогревателя
+#define EVENT_HEATER_STOP_EMERGENCY 16  // Аварийное отключение обогревателя
+
+#define EVENT_AC_FAIL               20  // Отключение электропитания (380В)
+#define EVENT_AC_RESTORE            21  // Возобновление электропитания (380В)
+
+#define EVENT_FLOOD_START           30  // Затопление
+#define EVENT_FLOOD_STOP						31  // Осушение
+
+#define EVENT_DOOR_OPEN             40  // Открытие входной двери
+#define EVENT_DOOR_CLOSE            41  // Закрытие входной двери
+
+#define EVENT_BALANCE								50  // Баланс ниже допустимого
+#define EVENT_GSM_FAIL              51  // Модуль не может зарегистрироваться в GSM сети (нет сигнала?)
+#define EVENT_GPRS_FAIL             52  // Модуль не может включить GPRS (отключен интернет?)
+#define EVENT_HTTP_FAIL             53  // Модуль не может подключиться к серверу (проблема  с сервером?)
+#define EVENT_NEW_REMOTE_SETTINGS   54  // Удаленно (через интернет) заданы новые настройки водяного
+
+#define EVENT_BAT_FAIL              60  // Провалена проверка аккумулятора (слишком низкое напряжение)
+#define EVENT_NEW_LOCAL_SETTINGS    61  // Вручную (локально) заданы новые настройки водяного
+#define EVENT_FREEZE                62  // Возможно заморозка
+#define EVENT_TOO_HOOT              63  // Перегрев
+#define EVENT_RXB_OVERLOAD          64  // Переполнение приёмного буфера RX
+#define EVENT_HISTORY_OVERLOAD      65  // Переполнение истории
+#define EVENT_START						      66	// Включение водяного
+
+#define EVENT_NONE                  0xFF   // Пустое событие
 
 #define LIGHT_TIME						10		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
@@ -124,6 +137,7 @@ struct TNotifications {
 struct TSettings {          // Структура для хранения всех сохраняемых в eeprom настроек и переменных.
   uint8_t       FrostFlag,		            // Флаг того, что температура падала до -3*С и, возможно, насос замерз.
   PumpWorkFlag,             // Флаг, что в данный момент насос должен работать
+	DirectControlFlags,				// Флаги прямого удаленного управления 0b000,СброситьЗаморозку, вЫк обогрев, Вкл обогрев, вЫк насос, Вкл насос
   fFreezeNotifications,     // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
   fWarmNotifications,       // Флаги оповещения о перегреве.
   fDoorNotifications,       // Флаги оповещения об открытии двери.
@@ -231,7 +245,7 @@ uint8_t								LightLeft, 					// Сколько осталось работать подсветке в сек.
 											BtStat,							// Состояние кнопок
 											Seconds;						// Счетчик секунд из функции OneMoreSec()
 uint16_t							Volts;
-volatile uint32_t			SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером
+volatile int32_t			SilentLeft;		      // Сколько секунд осталось до попытки связи с сервером. Если -1, связь только по звонку
 int8_t								MenuMode,						// Номер текущего режима меню
 											SIM900Status,				// Cостояние связи
 											settingsWasChanged, // Флаг несохраненных настроек
