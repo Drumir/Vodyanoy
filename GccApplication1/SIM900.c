@@ -205,9 +205,13 @@ void SIM900_EnableGPRS(void)
 
   do{
     iterations ++;
-    _delay_ms(500);
+    _delay_ms(2000);
     uart_send("AT+SAPBR=1,1");
-  } while(waitAnswer("OK", 60) != 1 && iterations < 30);
+		waitMessage();dropMessage();	// Отбросим эхо
+		waitMessage();
+		if(strncmp((char*)rx.buf+rx.ptrs[0], "OK", 2) == 0){dropMessage(); break;}
+		dropMessage();
+  } while(iterations < 30);
   SIM900Status = SIM900_GPRS_OK;
   if(iterations == 30) SIM900Status = SIM900_GPRS_FAIL;
   

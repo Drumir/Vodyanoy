@@ -155,7 +155,7 @@ int main(void)
 	CheckNotifications();               // Проверим не произошло ли какое-то событие о котором нужно уведомить админа/оператора 
     if(SilentLeft == 0)    // Проверим не пора ли организовать сеанс связи
     {
-      SilentLeft = options.ConnectPeriod*60 - 1;    // Следующий сеанс связи через options.ConnectPeriod минут
+      SilentLeft = options.ConnectPeriod*60 - 1L;    // Следующий сеанс связи через options.ConnectPeriod минут
        
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
       {
@@ -870,12 +870,13 @@ void ShowStat(void)
 	else LCD_writeString("Сбой элект-ния");
 
 	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, strD, 10); strcat(buf, strD); strcat(buf, "v ");
-	if(SilentLeft >180){
+	if(SilentLeft > 180){
 		itoa(SilentLeft/60, strD, 10); strcat(buf, strD); strcat(buf, "m");
 	}
-	else {
+	else if(SilentLeft >= 0) {
 		itoa(SilentLeft, strD, 10); strcat(buf, strD); strcat(buf, "s");
 	}
+	else strcat(buf, "call");
 	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
 
 	//			volatile uint16_t i = 0;

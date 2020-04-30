@@ -9,13 +9,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "global.h"
 #include <util/delay.h>
 #include "uart.h"
 #include "DS18B20.h"
 #include "3310_routines.h"
-
-
 
 #define MD_PUMPRELAXTIME	0x00	//  Выбор длительности простоя насоса
 #define MD_PUMPWORKTIME		0x01	//  Выбор длительности работы насоса
