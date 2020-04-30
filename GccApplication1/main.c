@@ -199,9 +199,9 @@ int main(void)
 					}
         }
 
-				LCD_gotoXY(0, 4); LCD_writeString("Sending  Stats ");
+				LCD_gotoXY(0, 4); LCD_writeString("Sending Stats ");
         SIM900_SendStatus();                                                          // Отошлем на сервер текущее состояние
-				LCD_gotoXY(0, 4); LCD_writeString("Sending History");
+				LCD_gotoXY(0, 4); LCD_writeString("SendingHistory");
         SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
     } 
@@ -653,7 +653,7 @@ void CheckIncomingMessages(void)
 	if(strncmp((char*)rx.buf+rx.ptrs[0], "+CLIP: \"+7", 10) == 0){	// Входящий звонок. Звонки с нероссийских номеров игнорируются
 		if(strncmp((char*)rx.buf+rx.ptrs[0]+10, options.OperatorTel, 10) == 0 || strncmp((char*)rx.buf+rx.ptrs[0]+10, options.AdminTel, 10) == 0)
 		{
-			if(SilentLeft > 5) SilentLeft = 1;	// Срочно организовать сеанс связи с сервером
+			SilentLeft = 1;	// Срочно организовать сеанс связи с сервером
 		}
 		dropMessage();				// Отбросим "+CLIP: "+78312330158",145,"",,"",0"
 		uart_send("ATH0");		// Сбросим вызов
@@ -876,7 +876,7 @@ void ShowStat(void)
 	else if(SilentLeft >= 0) {
 		itoa(SilentLeft, strD, 10); strcat(buf, strD); strcat(buf, "s");
 	}
-	else strcat(buf, "call");
+	else strcat(buf, "звон");
 	LCD_gotoXY(0, 3);LCD_writeString(buf);					// Отобразим баланс, напряжение батареи, время до след сеанса связи
 
 	//			volatile uint16_t i = 0;
