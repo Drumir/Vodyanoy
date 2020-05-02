@@ -54,14 +54,14 @@
 #define EVENT_PUMP_STOP_EMERGENCY   6		// Аварийное отключение насоса
 #define EVENT_PUMP_FAIL_NO_SCHEDULE	7		// Включение насоса не удалось из-за отсутствующего расписания
 #define EVENT_PUMP_FAIL_FREEZE			8		// Включение насоса не удалось из-за заморозки
-#define EVENT_PUMP_FAIL_NO_AC				9		// Включение насоса из-за отсутствующего питания
+#define EVENT_PUMP_FAIL_NO_AC				9		// Включение насоса не удалось из-за отсутствующего питания
 
 #define EVENT_HEATER_START_AUTO     10  // Автоматическое включение обогревателя
 #define EVENT_HEATER_STOP_AUTO      11  // Автоматическое отключение обогревателя
 #define EVENT_HEATER_START_MANUAL   12  // Ручное включение обогревателя
 #define EVENT_HEATER_STOP_MANUAL    13  // Ручное отключение обогревателя
 #define EVENT_HEATER_START_REMOTE   14  // Удаленное включение обогревателя
-#define EVENT_HEATER_STOP_REMOTE		15  // Удаленное включение обогревателя
+#define EVENT_HEATER_STOP_REMOTE		15  // Удаленное вЫключение обогревателя
 #define EVENT_HEATER_STOP_EMERGENCY 16  // Аварийное отключение обогревателя
 
 #define EVENT_AC_FAIL               20  // Отключение электропитания (380В)

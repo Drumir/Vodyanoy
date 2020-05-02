@@ -8,8 +8,17 @@ var sqlServerAdress = "https://vodyanoy.000webhostapp.com/user.php";
 window.onload = function() {          //
 
   document.getElementById('saveSettings').onclick = onBtnSaveClick;  
+  document.getElementById('PumpStart').onclick = onPumpStartStopClick;  
+  document.getElementById('PumpStop').onclick = onPumpStartStopClick;  
   
   ReadSettingsFromServer();
+}
+
+function onPumpStartStopClick(){
+  if(this.id === "PumpStart")
+    document.getElementById('PumpStop').checked = false;
+  else      
+    document.getElementById('PumpStart').checked = false;
 }
 
 function onBtnSaveClick(){
@@ -197,7 +206,8 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
   params.timestamp = str;    
   */
   
-  params.action = "writeSettings"; 
+  params.action = "writeSettings";  
+  var btn = document.getElementById('saveSettings');
 
   $("#backgroundPopup").fadeIn("fast");
   
@@ -217,5 +227,6 @@ function cb16mbError(){
 
 function cbSqlWriteValueSuccess(){
 
-  $("#backgroundPopup").fadeOut("fast");
+  $("#backgroundPopup").fadeOut("fast"); 
+  document.getElementById('PumpWorkTime').focus();
   }
