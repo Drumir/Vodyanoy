@@ -110,11 +110,13 @@
     }               
   }
 
-
   if($act == null){
     $answer["status"] = "act=nuLL";     
   }
 
+  if($act == "check"){
+    echo "success";     
+  }
+
   echo json_encode($answer);
   mysqli_close($link);
-		

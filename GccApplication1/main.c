@@ -174,29 +174,7 @@ int main(void)
 					LCD_gotoXY(0, 4); LCD_writeString("RevewLoclSetts");
 			    SilentLeft = options.ConnectPeriod * 60;		// Обновим период сеансов связи
 					if(options.DirectControlFlags != 0)					// Проверим состояние флагов прямого удаленного управления
-					{
-						if(options.DirectControlFlags & 0b00010000)		// Сбросить состояние заморозки
-							options.FrostFlag = 0;
-						if(options.DirectControlFlags & 0b00001000)		// вЫключить обогреватель
-						{
-							HeaterStop(); RecToHistory(EVENT_HEATER_STOP_REMOTE);
-						}
-						if(options.DirectControlFlags & 0b00000100)		// включить обогреватель
-						{
-							HeaterStart(); RecToHistory(EVENT_HEATER_START_REMOTE);
-						}
-						if(options.DirectControlFlags & 0b00000010)		// вЫключить насос
-						{
-							PumpStop(); RecToHistory(EVENT_PUMP_STOP_REMOTE);
-						}
-						if(options.DirectControlFlags & 0b00000001)		// включить насос
-						{
-							uint8_t eventCode = PumpStart();
-							if(eventCode == EVENT_NONE) RecToHistory(EVENT_PUMP_START_REMOTE);
-							else RecToHistory(eventCode);
-						}
-					options.DirectControlFlags = 0;
-					}
+						ApplyDirectControl();
         }
 
 				LCD_gotoXY(0, 4); LCD_writeString("Sending Stats ");
@@ -206,6 +184,31 @@ int main(void)
       }
     } 
   }
+}
+//------------------------------------------------------------------------------
+void ApplyDirectControl(void)
+{
+	if(options.DirectControlFlags & 0b00010000)		// Сбросить состояние заморозки
+		options.FrostFlag = 0;
+	if(options.DirectControlFlags & 0b00001000)		// вЫключить обогреватель
+	{
+		HeaterStop(); RecToHistory(EVENT_HEATER_STOP_REMOTE);
+	}
+	else if(options.DirectControlFlags & 0b00000100)		// включить обогреватель
+	{
+		HeaterStart(); RecToHistory(EVENT_HEATER_START_REMOTE);
+	}
+	if(options.DirectControlFlags & 0b00000010)		// вЫключить насос
+	{
+		PumpStop(); RecToHistory(EVENT_PUMP_STOP_REMOTE);
+	}
+	else if(options.DirectControlFlags & 0b00000001)		// включить насос
+	{
+		uint8_t eventCode = PumpStart();
+		if(eventCode == EVENT_NONE) RecToHistory(EVENT_PUMP_START_REMOTE);
+		else RecToHistory(eventCode);
+	}
+	options.DirectControlFlags = 0;
 }
 
 //------------------------------------------------------------------------------
@@ -640,6 +643,23 @@ uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900,
   return 0;
 }
 //----------------------------------------------------------------
+void waitDropOK(void)
+{
+	TimeoutTackts = 100;			// Запустим отсчёт таймаута (10сек)
+	while(1){
+		while(rx.ptrs[0] == -1 && TimeoutTackts != 0);
+		if(TimeoutTackts == 0){                                          // Если вышли из цикла по таймауту, возвращаем 0
+			TimeoutsCount ++;
+			return;
+		}
+		if(strncmp((char*)rx.buf+rx.ptrs[0], "OK", 3) == 0){     // Если получен ответ ОК
+			dropMessage();
+			return;
+		}
+		dropMessage();		// "неожиданные" сообщения теряются
+	}
+}
+//----------------------------------------------------------------
 void waitMessage(void)
 {
 	TimeoutTackts = 100;		// Таймаутожидания 10 сек.
@@ -658,14 +678,14 @@ void CheckIncomingMessages(void)
 		dropMessage();				// Отбросим "+CLIP: "+78312330158",145,"",,"",0"
 		uart_send("ATH0");		// Сбросим вызов
 		waitMessage();dropMessage();        // Выбрасываем эхо
-		waitMessage();dropMessage();				// Выбрасываем ОК
+		waitDropOK();												// Выбрасываем ОК
 		return;
 	}
 	
 	if(strncmp((char*)rx.buf+rx.ptrs[0], "+CMTI:", 6) == 0){	// Входящее СМС
 		uart_send("AT+CMGD=4");			// Удаляем вообще все сообщения
 		waitMessage();dropMessage();        // Выбрасываем эхо
-		waitMessage();dropMessage();				// Выбрасываем ОК
+		waitDropOK();												// Выбрасываем ОК
 	}
 	
 	dropMessage();		// Все остальные сообщения просто отбрасываем
@@ -1002,9 +1022,9 @@ void CheckNotifications(void)
 		{
 			strcpyPM(buf, MSG_Freezing);
 			if(options.fFreezeNotifications & 0b00001000) // Смс Оператору
-			SIM9000_SendSMS(options.OperatorTel, buf);
+			SIM900_SendSMS(options.OperatorTel, buf);
 			if(options.fFreezeNotifications & 0b00000100) // Смс Админу
-			SIM9000_SendSMS(options.AdminTel, buf);
+			SIM900_SendSMS(options.AdminTel, buf);
 		}
 		if(options.fFreezeNotifications & 0b00000010) // Звонок Оператору
 		SIM900_Call(options.OperatorTel);
@@ -1018,9 +1038,9 @@ void CheckNotifications(void)
 		{
 			strcpyPM(buf, MSG_Warming);
 			if(options.fWarmNotifications & 0b00001000) // Смс Оператору
-			SIM9000_SendSMS(options.OperatorTel, buf);
+			SIM900_SendSMS(options.OperatorTel, buf);
 			if(options.fWarmNotifications & 0b00000100) // Смс Админу
-			SIM9000_SendSMS(options.AdminTel, buf);
+			SIM900_SendSMS(options.AdminTel, buf);
 		}
 		if(options.fWarmNotifications & 0b00000010) // Звонок Оператору
 		SIM900_Call(options.OperatorTel);
@@ -1034,9 +1054,9 @@ void CheckNotifications(void)
 		{
 			strcpyPM(buf, MSG_PowerLost);
 			if(options.fPowerNotifications & 0b00001000) // Смс Оператору
-			SIM9000_SendSMS(options.OperatorTel, buf);
+			SIM900_SendSMS(options.OperatorTel, buf);
 			if(options.fPowerNotifications & 0b00000100) // Смс Админу
-			SIM9000_SendSMS(options.AdminTel, buf);
+			SIM900_SendSMS(options.AdminTel, buf);
 		}
 		if(options.fPowerNotifications & 0b00000010) // Звонок Оператору
 		SIM900_Call(options.OperatorTel);
@@ -1052,9 +1072,9 @@ void CheckNotifications(void)
 		{
 			strcpyPM(buf, MSG_PowerRestore);
 			if(options.fPowerRestNotifications & 0b00001000) // Смс Оператору
-			SIM9000_SendSMS(options.OperatorTel, buf);
+			SIM900_SendSMS(options.OperatorTel, buf);
 			if(options.fPowerRestNotifications & 0b00000100) // Смс Админу
-			SIM9000_SendSMS(options.AdminTel, buf);
+			SIM900_SendSMS(options.AdminTel, buf);
 		}
 		if(options.fPowerRestNotifications & 0b00000010) // Звонок Оператору
 		SIM900_Call(options.OperatorTel);

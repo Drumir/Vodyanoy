@@ -18,18 +18,7 @@ window.onload = function() {          //
   GetHistory();
   setInterval(oneMoreMinute, 60000); 
 } 
-/*
-function onBatteryChartSwitchClick(){
-    if(this.innerText == "Подробнее"){
-        this.innerText = "Свернуть";
-        document.getElementById('batteryChart').height = 200;
-    }
-    else{
-        this.innerText = "Подробнее";
-        document.getElementById('batteryChart').height = 200;
-    }
-}
-*/
+
 function oneMoreMinute(){
   $("#backgroundPopup").fadeOut("fast"); 
   GetHistory();

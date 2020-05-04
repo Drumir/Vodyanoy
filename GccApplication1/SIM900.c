@@ -7,6 +7,38 @@
 
 #include "vodyanoy2.0.h"
 
+void SIM900_CheckLink(void)   // Проверяет состояние связи
+{ 
+	uart_send("AT+HTTPINIT"); waitDropOK();
+	uart_send("AT+HTTPPARA=\"CID\",1"); waitDropOK();
+	strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=check\"");
+	uart_send(query);	waitDropOK();
+	uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+	waitMessage(); dropMessage();     // Отбросим эхо
+	waitDropOK();     // Отбросим "ОК"
+	waitMessage();
+	if(str2int((char*)rx.buf+rx.ptrs[0]+14) == 200){  // Если сервер вернул правильный статус запроса
+		dropMessage();     // Отбросим ответ сервера
+		SIM900Status = SIM900_HTTP_OK;									// Со связью все ОК, сервер отвечает
+		return;
+	}
+	SIM900Status = SIM900_HTTP_FAIL;  // Проверим наличие GPRS
+	SIM900_EnableGPRS();
+	if(SIM900Status == SIM900_GPRS_OK){
+		RecToHistory(EVENT_HTTP_FAIL);
+		return;	
+	}
+	SIM900Status = SIM900_GPRS_FAIL;  // Проверка GPRS провалена
+	SIM900_EnableGSM();
+	if(SIM900Status == SIM900_GSM_OK){
+		RecToHistory(EVENT_GPRS_FAIL);
+		return;
+	}
+	SIM900Status = SIM900_GSM_FAIL;  // Проверка GSM провалена
+	
+}
+//----------------------------------------------------------------
+
 void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается включить, зарегистрировать в сети модуль и открыть GPRS сессию
 {                                     // Успешность записывается в SIM900Status
   switch(SIM900Status){
@@ -26,7 +58,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
     }
     case SIM900_UP:
     {
-      SIM900_WaitRegistration();
+      SIM900_EnableGSM();
       if(SIM900Status < SIM900_GSM_OK){
         return;
 			}
@@ -35,6 +67,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
     {
       SIM900_EnableGPRS();
 			if(SIM900Status == SIM900_GPRS_FAIL){
+				return;
 			}
     }  
     case SIM900_GPRS_OK:
@@ -48,11 +81,9 @@ void SIM900_SendStatus(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 60);
-//  uart_send("AT+HTTPSSL=1");
-//  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 60);
+  waitDropOK();
 
   itoa(State.Temp, strS, 10);
   strcpy(query, "AT+HTTPPARA=\"URL\",\"");
@@ -76,10 +107,10 @@ void SIM900_SendStatus(void)
   strcat(query, strS);
   strcat(query, "\"");
   uart_send(query);
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
   waitMessage();
   if(str2int((char*)rx.buf+rx.ptrs[0]+18) > 32){
     dropMessage();     // Отбросим ответ сервера
@@ -87,12 +118,12 @@ void SIM900_SendStatus(void)
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage(); dropMessage();     // Отбросим прочитанное
-    waitMessage(); dropMessage();     // Отбросим "ОК"
+    waitDropOK();     // Отбросим "ОК"
   }
   dropMessage();
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
 
 }
 //----------------------------------------------------------------
@@ -117,24 +148,28 @@ void SIM900_PowerOn(void)
   SIM900Status = SIM900_UP;
 }
 //----------------------------------------------------------------
-void SIM900_WaitRegistration(void)
+void SIM900_EnableGSM(void)
 {
   if(SIM900Status < SIM900_UP) return;
   SIM900Status = SIM900_REG_GSM;
-  uint8_t iterations = 0, sucess_flag = 0;
+  uint8_t iterations = 0;
   do{
-    _delay_ms(1500);
     uart_send("AT+CREG?");
     waitMessage();dropMessage();        // Выбрасываем эхо
     waitMessage();
-    if(strncmp((char*)rx.buf+rx.ptrs[0], "+CREG: 0,1", 10) == 0) sucess_flag = 1; // Анализируем ответ
+    if(strncmp((char*)rx.buf+rx.ptrs[0], "+CREG: 0,1", 10) == 0){ // Анализируем ответ
+			dropMessage();
+			waitDropOK();      // Выбрасываем "ОК"
+			break;
+		}
     dropMessage();
-    waitMessage();dropMessage();      // Выбрасываем "ОК"
+    waitDropOK();      // Выбрасываем "ОК"
     iterations ++;
-  }while(sucess_flag == 0 && iterations < 30);
+    _delay_ms(1500);
+  }while(iterations < 30);
 
   SIM900Status = SIM900_GSM_OK;
-  if(sucess_flag == 0) SIM900Status = SIM900_GSM_FAIL;
+  if(iterations == 30) SIM900Status = SIM900_GSM_FAIL;
 }
 //----------------------------------------------------------------
 void SIM900_GetTime(void)
@@ -142,30 +177,31 @@ void SIM900_GetTime(void)
 	if(SIM900Status < SIM900_UP) return;
 	uart_send("AT+CCLK?");  //		uart_send("AT+CCLK=\"20/04/02,14:43:00+03\"");
 	waitMessage(); dropMessage();     // Отбросим эхо
-	waitMessage(); /*dropMessage();*/     // Отбросим ответ
+	waitMessage(); 
 	Now.yy = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+8);
 	Now.MM = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+11);
 	Now.dd = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+14);
 	Now.hh = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+17);
 	Now.mm = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+20);
 	Now.ss = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+23);
-	waitMessage(); dropMessage();     // Отбросим ОК
+	dropMessage();     // Отбросим ответ
+	waitDropOK();     // Отбросим ОК
 }
 //----------------------------------------------------------------
 void SIM900_SetTimeFromServer(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 60);
+  waitDropOK();
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=getSrvTime\"");
   uart_send(query);
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
   waitMessage();
   if(str2int((char*)rx.buf+rx.ptrs[0]+14) == 200){  // Если сервер вернул правильный статус запроса
 	  dropMessage();     // Отбросим ответ сервера
@@ -176,12 +212,12 @@ void SIM900_SetTimeFromServer(void)
 		strcpy(strS, (char*)rx.buf+rx.ptrs[0]+30);		// Сохраним в strS полученное время
 		strS[17] = '\0';
 	  dropMessage();     // Отбросим прочитанное
-	  waitMessage(); dropMessage();     // Отбросим "ОК"
+	  waitDropOK();     // Отбросим "ОК"
   }
   dropMessage();
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
 
 	strcpy(query, "AT+CCLK=\"");
 	strcat(query, strS);
@@ -199,18 +235,18 @@ void SIM900_EnableGPRS(void)
   SIM900Status = SIM900_REG_GPRS;
   
   //    Эти настройки УЖЕ сохранены в энергонезависимой памяти модуля
-  //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitAnswer("OK", 60);
-  //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitAnswer("OK", 60);uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitAnswer("OK", 60);
+  //uart_send("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");waitDropOK();uart_send("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"");waitDropOK();
+  //uart_send("AT+SAPBR=3,1,\"USER\",\"\"");waitDropOK();uart_send("AT+SAPBR=3,1,\"PWD\",\"\"");waitDropOK();
 	//uart_send("AT+CNMI=2,2");waitMessage();dropMessage();waitMessage();dropMessage(); // Принятые СМС сразу отправятся в МК без каких либо запрососв и уведомлений
 
   do{
     iterations ++;
-    _delay_ms(2000);
     uart_send("AT+SAPBR=1,1");
 		waitMessage();dropMessage();	// Отбросим эхо
 		waitMessage();
 		if(strncmp((char*)rx.buf+rx.ptrs[0], "OK", 2) == 0){dropMessage(); break;}
 		dropMessage();
+    _delay_ms(2000);
   } while(iterations < 30);
   SIM900Status = SIM900_GPRS_OK;
   if(iterations == 30) SIM900Status = SIM900_GPRS_FAIL;
@@ -223,8 +259,7 @@ void SIM900_GetBalance(void)
   //  uart_send("AT+CUSD=1,\"*120#\"");         // Баланс на английском   AT+CUSD=1,"*120$23"$0d
   uart_send("AT+CUSD=1,\"*105*5#\"");         // Запрос баланса  AT+CUSD=1,"*105*5$23"$0d
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим ОК
-  waitMessage(); dropMessage();     // Отбросим ОК
+  waitDropOK();     // Отбросим ОК
   waitMessage();
 	//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
   State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
@@ -235,16 +270,16 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 60);
+  waitDropOK();
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=gts\"");
   uart_send(query);
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
   waitMessage();
   if(str2int((char*)rx.buf+rx.ptrs[0]+14) == 200){  // Если сервер вернул правильный статус запроса
     dropMessage();     // Отбросим ответ сервера
@@ -277,21 +312,21 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
     strncpy(strS, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(strS);*/
 		//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]+44);
     dropMessage();     // Отбросим прочитанное
-    waitMessage(); dropMessage();     // Отбросим "ОК"
+    waitDropOK();     // Отбросим "ОК"
   }
   dropMessage();
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
 }
 //----------------------------------------------------------------
 void SIM900_SendSettings(void)                    // Отсылает настройки на сервер для сохранения
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 60);
+  waitDropOK();
 
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=wS&pump1="); // Write Settings
   itoa(options.PumpWorkDuration, strS, 10); strcat(query, strS); strcat(query, "&pump0=");
@@ -301,16 +336,16 @@ void SIM900_SendSettings(void)                    // Отсылает настройки на серве
 
   uart_send(query);
 
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
 
   waitMessage(); dropMessage();     // Отбросим Ответ
 
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
 
 }
 //----------------------------------------------------------------
@@ -319,15 +354,15 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера и
   uint16_t commaPosition = 0;
   if(SIM900Status < SIM900_GPRS_OK) return;
   uart_send("AT+HTTPINIT");
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPPARA=\"CID\",1");
-  waitAnswer("OK", 60);
+	waitDropOK();
   strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=GetSettings\"");
   uart_send(query);
-  waitAnswer("OK", 60);
+  waitDropOK();
   uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
   waitMessage();
   if(str2int((char*)rx.buf+rx.ptrs[0]+14) == 200){  // Если сервер вернул правильный статус запроса
     dropMessage();     // Отбросим ответ сервера
@@ -401,12 +436,12 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера и
 		RecToHistory(EVENT_NEW_REMOTE_SETTINGS);
 
 		dropMessage();     // Отбросим прочитанное
-    waitMessage(); dropMessage();     // Отбросим "ОК"
+    waitDropOK();     // Отбросим "ОК"
   }
   dropMessage();
   uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
   waitMessage(); dropMessage();     // Отбросим эхо
-  waitMessage(); dropMessage();     // Отбросим "ОК"
+  waitDropOK();     // Отбросим "ОК"
 }
 //----------------------------------------------------------------
 void SIM900_SendHistory(void)                     // Отошлем на сервер историю событий
@@ -419,9 +454,9 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
 	{
 
 		uart_send("AT+HTTPINIT");
-		waitAnswer("OK", 60);
+		waitDropOK();
 		uart_send("AT+HTTPPARA=\"CID\",1");
-		waitAnswer("OK", 60);
+		waitDropOK();
 		strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=sh&ts=");
 		itoa(History[ptr].EventTime.yy, strS, 10); strcat(query, strS);
 		if(History[ptr].EventTime.MM < 10)strcat(query, "0"); itoa(History[ptr].EventTime.MM, strS, 10); strcat(query, strS);
@@ -433,19 +468,19 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
 		itoa(History[ptr].EventCode, strS, 10); strcat(query, strS);
 		strcat(query, "\"");
 		uart_send(query);
-		waitAnswer("OK", 60);
+		waitDropOK();
 		uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
 		waitMessage(); dropMessage();     // Отбросим эхо
-		waitMessage(); dropMessage();     // Отбросим "ОК"
+		waitDropOK();     // Отбросим "ОК"
 		waitMessage(); dropMessage();			// Отбросим +HTTPACTION:0,200,32
 		uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
 		waitMessage(); dropMessage();     // Отбросим эхо
-		waitMessage(); dropMessage();     // Отбросим "ОК"
+		waitDropOK();     // Отбросим "ОК"
 		History[ptr].EventCode = EVENT_NONE;
 	}
 }
 //----------------------------------------------------------------
-void SIM9000_SendSMS(char *number, char *text)	   // Отсылает смс с текстом text на номер number
+void SIM900_SendSMS(char *number, char *text)	   // Отсылает смс с текстом text на номер number
 {
   if(SIM900Status < SIM900_GSM_OK) return;
 	strcpy(strS, "AT+CMGS=\"+7");
@@ -458,10 +493,10 @@ void SIM9000_SendSMS(char *number, char *text)	   // Отсылает смс с текстом text
 	uart_send(text);
 	waitMessage(); dropMessage();     // Отбросим эхо
 	waitMessage(); dropMessage();     // Отбросим +CMGS: 2  Здесь 2 - номер сообщения, которое сохранилось во входящих
-	waitAnswer("OK", 60);
+	waitDropOK();
 	uart_send("AT+CMGD=4");			// Удаляем вообще все сообщения
 	waitMessage();dropMessage();        // Выбрасываем эхо
-	waitMessage();dropMessage();				// Выбрасываем ОК
+	waitDropOK();				// Выбрасываем ОК
 
 	
 }
@@ -474,16 +509,16 @@ void SIM900_Call(char *number)										 // Звонит на номер number.
 	strcat(strS, ";");
 	uart_send(strS);
 	waitMessage(); dropMessage();     // Отбросим эхо
-	waitMessage(); dropMessage();     // Отбросим ОК
+	waitDropOK();     // Отбросим ОК
 }
 //----------------------------------------------------------------
 
 /*			static uint8_t smsNun = 0;
 			if (smsNun == 0)
 			{
-				uart_send("AT+CMGF=1"); waitMessage(); dropMessage(); waitAnswer("OK", 50);				// Включить текстовый режим СМС
-				uart_send("AT+CSCS= \"GSM\""); waitMessage(); dropMessage(); waitAnswer("OK", 50);// Использовать кодировку "GSM"
-				uart_send("AT+CSCB=1"); waitMessage(); dropMessage(); waitAnswer("OK", 50);				// Запертить прием специальных сообщений
+				uart_send("AT+CMGF=1"); waitMessage(); dropMessage(); waitDropOK();				// Включить текстовый режим СМС
+				uart_send("AT+CSCS= \"GSM\""); waitMessage(); dropMessage(); waitDropOK();// Использовать кодировку "GSM"
+				uart_send("AT+CSCB=1"); waitMessage(); dropMessage(); waitDropOK();				// Запертить прием специальных сообщений
 			}
 			else{
 				strcpy(strS, "AT+CMGR="); itoa(smsNun, strD, 10); strcat(strS, strD); uart_send(strS); // Прочитать СМС номер smsNun

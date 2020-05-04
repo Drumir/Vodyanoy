@@ -209,10 +209,12 @@ uint8_t ConnectToServer(void);					// Подключается к серверу для передачи статис
 void SoftReset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
 void measureBattery(void);							// Измеряет напряжение аккумулятора, записывает его в state.vBat
 void CheckIncomingMessages(void);				// Проверяет наличие принятых необработаных сообщений. Обрабатывает их.
-void CheckNotifications(void);	// Проверяет наличие несделаных оповещений
+void CheckNotifications(void);					// Проверяет наличие несделаных оповещений
+void ApplyDirectControl(void);					// Исполняет указания прямого удаленного управления
 
 
 uint8_t waitAnswer(char *answer, uint16_t timeout);
+void waitDropOK(void);
 void dropMessage(void);
 int16_t str2int(char* str);
 void waitMessage(void);
@@ -221,10 +223,9 @@ void strcpyPM(char *dest, const char *PMsrc);		// Копирует из PROGMEM строку в d
 
 
 void SIM900_GetBalance(void);
-void SIM900_WaitRegistration(void);
 void SIM900_PowerOn(void);
 void SIM900_PowerOff(void);
-void SIM900_WaitRegistration(void);
+void SIM900_EnableGSM(void);
 void SIM900_GetTime(void);
 void SIM900_SetTimeFromServer(void);
 void SIM900_EnableGPRS(void);
@@ -235,8 +236,9 @@ void SIM900_SendSettings(void);                    // Отсылает настройки на серв
 void SIM900_GetSettings(void);                     // Берет настройки с сервера м применяет их
 void SIM900_SendStatus(void);                      // Отошлем на сервер текущее состояние
 void SIM900_SendHistory(void);                     // Отошлем на сервер историю событий
-void SIM9000_SendSMS(char *number, char *text);	   // Отсылает смс с текстом text на номер number
+void SIM900_SendSMS(char *number, char *text);	   // Отсылает смс с текстом text на номер number
 void SIM900_Call(char *number);										 // Звонит на номер number. При ответе сбрасывает
+void SIM900_CheckLink(void);											 // Проверяет состояние связи результат в SIM900Status
 
 
 uint8_t								LightLeft, 					// Сколько осталось работать подсветке в сек.
