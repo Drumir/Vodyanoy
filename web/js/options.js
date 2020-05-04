@@ -8,17 +8,17 @@ var sqlServerAdress = "https://vodyanoy.000webhostapp.com/user.php";
 window.onload = function() {          //
 
   document.getElementById('saveSettings').onclick = onBtnSaveClick;  
-  document.getElementById('PumpStart').onclick = onPumpStartStopClick;  
-  document.getElementById('PumpStop').onclick = onPumpStartStopClick;  
+  document.getElementById('DirectPumpStart').onclick = onPumpStartStopClick;  
+  document.getElementById('DirectPumpStop').onclick = onPumpStartStopClick;  
   
   ReadSettingsFromServer();
 }
 
 function onPumpStartStopClick(){
-  if(this.id === "PumpStart")
-    document.getElementById('PumpStop').checked = false;
+  if(this.id === "DirectPumpStart")
+    document.getElementById('DirectPumpStop').checked = false;
   else      
-    document.getElementById('PumpStart').checked = false;
+    document.getElementById('DirectPumpStart').checked = false;
 }
 
 function onBtnSaveClick(){
@@ -27,6 +27,7 @@ function onBtnSaveClick(){
 
 function cbSqlWriteValueSuccess(){
   ReadSettingsFromServer();
+  $("#backgroundPopup").fadeOut("fast"); 
 } 
 
 function ReadSettingsFromServer(){
@@ -105,8 +106,19 @@ function cbSqlReadSettingsSuccess(data, textStatus) {      // Прочитаем
     if((bitmask & 0b00001000) !== 0){ document.getElementById('OpSmsDailyReport').checked = true; }
     if((bitmask & 0b00000100) !== 0){ document.getElementById('AdmSmsDailyReport').checked = true; }
     if((bitmask & 0b00000010) !== 0){ document.getElementById('OpCallDailyReport').checked = true; }
-    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallDailyReport').checked = true; }
-
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('AdmCallDailyReport').checked = true; }   
+    
+    bitmask = data.result[0].direct_control_flags;    
+    //if((bitmask & 0b00010000) !== 0){ document.getElementById('DirectResetFreezing').checked = true; }
+    //if((bitmask & 0b00001000) !== 0){ document.getElementById('DirectHeaterStop').checked = true; }
+    //if((bitmask & 0b00000100) !== 0){ document.getElementById('DirectHeaterStart').checked = true; }
+    if((bitmask & 0b00000010) !== 0){ document.getElementById('DirectPumpStop').checked = true; }
+    if((bitmask & 0b00000001) !== 0){ document.getElementById('DirectPumpStart').checked = true; }   
+    if((bitmask & 0b00000011) === 0b00000011){ 
+      document.getElementById('DirectPumpStart').checked = false; 
+      document.getElementById('DirectPumpStop').checked = false;
+    }   
+    
     document.getElementById('OperatorTel').value = data.result[0].operator_number;
     document.getElementById('AdminTel').value = data.result[0].admin_number;
   }  
@@ -188,7 +200,16 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
   if(document.getElementById('AdmSmsDailyReport').checked == true) bitmask += 4;
   if(document.getElementById('OpCallDailyReport').checked == true) bitmask += 2;
   if(document.getElementById('AdmCallDailyReport').checked == true) bitmask += 1;
-  params.daily_report = bitmask;    
+  params.daily_report = bitmask;   
+  
+  bitmask = 0;    
+  //if(document.getElementById('DirectResetFreezing').checked == true) bitmask += 16;
+  //if(document.getElementById('DirectHeaterStop').checked == true) bitmask += 8;
+  //if(document.getElementById('DirectHeaterStart').checked == true) bitmask += 4;
+  if(document.getElementById('DirectPumpStop').checked == true) bitmask += 2;
+  if(document.getElementById('DirectPumpStart').checked == true) bitmask += 1;   
+  params.direct_control_flags = bitmask;   
+ 
 
   params.operator_number = document.getElementById('OperatorTel').value;
   params.admin_number = document.getElementById('AdminTel').value;  
@@ -225,8 +246,3 @@ function SendSettingsOnServer() {      // Сохраним ВСЕ настрой
 function cb16mbError(){
 }
 
-function cbSqlWriteValueSuccess(){
-
-  $("#backgroundPopup").fadeOut("fast"); 
-  document.getElementById('PumpWorkTime').focus();
-  }

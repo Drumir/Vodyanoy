@@ -111,4 +111,5 @@ hr {
   background: #000000;
   border: 0px;
   z-index: 2;
+  opacity: 0.8;
 }

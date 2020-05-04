@@ -24,7 +24,9 @@
       if(mysqli_num_rows($result) > 0){ 
         //$answer["result"][0] = mysqli_fetch_object($result); 
         $obj = mysqli_fetch_object($result);
-        $answer["result"] = $obj->timestamp.",".$obj->pump_work.",".$obj->pump_idle.",".$obj->min_temp.",".$obj->max_temp.",".$obj->report_interval.",".$obj->cold_warning.",".$obj->cold_warning_temp.",".$obj->warm_warning.",".$obj->warm_warning_temp.",".$obj->door_warning.",".$obj->flooding_warning.",".$obj->power_warning.",".$obj->power_rest_warning.",".$obj->offline_warning.",".$obj->offline_warning_duration.",".$obj->balance_warning.",".$obj->balance_warning_summ.",".$obj->daily_report.",".$obj->daily_report_time.",".$obj->operator_number.",".$obj->admin_number;
+        $answer["result"] = $obj->timestamp.",".$obj->pump_work.",".$obj->pump_idle.",".$obj->min_temp.",".$obj->max_temp.",".$obj->report_interval.",".$obj->cold_warning.",".$obj->cold_warning_temp.",".$obj->warm_warning.",".$obj->warm_warning_temp.",".$obj->door_warning.",".$obj->flooding_warning.",".$obj->power_warning.",".$obj->power_rest_warning.",".$obj->offline_warning.",".$obj->offline_warning_duration.",".$obj->balance_warning.",".$obj->balance_warning_summ.",".$obj->daily_report.",".$obj->daily_report_time.",".$obj->direct_control_flags.",".$obj->operator_number.",".$obj->admin_number;
+        $query = "UPDATE options SET direct_control_flags = 0 WHERE id = 1";
+        mysqli_query($link, $query);
       }    
     }
   }

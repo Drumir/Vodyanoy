@@ -20,16 +20,13 @@
     <div style="float:left; width:25%">
       <div id="leftCol" class="block"> 
         <h3>Типы событий</h3> 
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="pump" checked>Насос<br>
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="warm" checked>Обогреватель<br>
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="supply" checked>Электропитание<br>
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="flood" checked>Затопление<br>
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="door" checked>Дверь<br>
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="balance" checked>Баланс<br>
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="connect" checked>Связь<br> 
-        <input type="checkbox" name="eventsTypes" class="checkbox" value="other" checked>Остальные<br> 
-        <p>  
-        <button id="showEvents">Показать</button>
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="pump" checked>Насос<br>
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="warm" checked>Обогреватель<br>
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="supply" checked>Электропитание<br>
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="flood" checked>Затопление<br>
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="door" checked>Дверь<br>
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="connect" checked>Связь<br> 
+        <input type="checkbox" name="eventsTypes" class="checkbox" id="other" checked>Прочее<br> 
       </div> 
     </div>
     <div style="float:left; width:75%;">
@@ -43,11 +40,13 @@
           <tbody id="historyTbody"> 
 
           </tbody>
-        </table>
+        </table> 
+        <a id="showMore">Далее...</a>
       </div> 
     </div>
 
-  </div>
+  </div> 
+  <div id="backgroundPopup"></div>
 
 </body>
 </html>

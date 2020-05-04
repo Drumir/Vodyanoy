@@ -175,21 +175,21 @@ int main(void)
 			    SilentLeft = options.ConnectPeriod * 60;		// Обновим период сеансов связи
 					if(options.DirectControlFlags != 0)					// Проверим состояние флагов прямого удаленного управления
 					{
-						if(options.DirectControlFlags && 0b00010000)		// Сбросить состояние заморозки
+						if(options.DirectControlFlags & 0b00010000)		// Сбросить состояние заморозки
 							options.FrostFlag = 0;
-						if(options.DirectControlFlags && 0b00001000)		// вЫключить обогреватель
+						if(options.DirectControlFlags & 0b00001000)		// вЫключить обогреватель
 						{
 							HeaterStop(); RecToHistory(EVENT_HEATER_STOP_REMOTE);
 						}
-						if(options.DirectControlFlags && 0b00000100)		// включить обогреватель
+						if(options.DirectControlFlags & 0b00000100)		// включить обогреватель
 						{
 							HeaterStart(); RecToHistory(EVENT_HEATER_START_REMOTE);
 						}
-						if(options.DirectControlFlags && 0b00000010)		// вЫключить насос
+						if(options.DirectControlFlags & 0b00000010)		// вЫключить насос
 						{
 							PumpStop(); RecToHistory(EVENT_PUMP_STOP_REMOTE);
 						}
-						if(options.DirectControlFlags && 0b00000001)		// включить насос
+						if(options.DirectControlFlags & 0b00000001)		// включить насос
 						{
 							uint8_t eventCode = PumpStart();
 							if(eventCode == EVENT_NONE) RecToHistory(EVENT_PUMP_START_REMOTE);
@@ -329,7 +329,7 @@ ISR(INT1_vect)   //CLK от клавы                          КЛАВИАТУРА
 //------------------------------------------------------------------------------
 ISR(INT2_vect)   //                           Отключение питания
 {
-	OnPowerFail();
+//	OnPowerFail();
 }
 //------------------------------------------------------------------------------
 ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц)
