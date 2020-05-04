@@ -7,7 +7,7 @@
 
 #include "vodyanoy2.0.h"
 
-void SIM900_CheckLink(void)   // Проверяет состояние связи
+void SIM900_CheckLink(void)   // Проверяет состояние связи, при необходимости перезапускает модуль SIM900
 { 
 	uart_send("AT+HTTPINIT"); waitDropOK();
 	uart_send("AT+HTTPPARA=\"CID\",1"); waitDropOK();
@@ -35,7 +35,16 @@ void SIM900_CheckLink(void)   // Проверяет состояние связи
 		return;
 	}
 	SIM900Status = SIM900_GSM_FAIL;  // Проверка GSM провалена
-	
+	RecToHistory(EVENT_GSM_FAIL);
+  uart_send("AT+CPOWD=1");   // Выключим модуль
+	waitMessage(); dropMessage();     // Отбросим эхо
+	waitMessage(); dropMessage();     // Отбросим "NORMAL POWER DOWN"
+  cbi(PORTD, 7);      // Отключаем питание SIM900
+	RecToHistory(EVENT_SIM900_RESTART);
+  _delay_ms(5000);   // Ждем 5 сек
+	SIM900Status = SIM900_NOTHING;
+	SIM900_PrepareConnection();		// Включаем и пробуем подключиться
+
 }
 //----------------------------------------------------------------
 
@@ -45,7 +54,7 @@ void SIM900_PrepareConnection(void)   // Проверяет напряжение батареи, пытается 
     case SIM900_NOTHING:  // СИМ900 еще даже не запитана
     {                           // Измерим напряжение на батарее
 			measureBattery();
-      if(State.Vbat < 33*20)
+      if(State.Vbat < 35*20)
       {
         SIM900Status = SIM900_BAT_FAIL;
         return;  
@@ -129,6 +138,7 @@ void SIM900_SendStatus(void)
 //----------------------------------------------------------------
 void SIM900_PowerOn(void)
 {
+
   if(SIM900Status < SIM900_BAT_OK) return;
   sbi(PORTD, 7);      // Enable 4.0v
   _delay_ms(200);   // Надо ли?

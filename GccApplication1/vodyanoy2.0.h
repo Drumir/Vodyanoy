@@ -86,6 +86,7 @@
 #define EVENT_RXB_OVERLOAD          64  // Переполнение приёмного буфера RX
 #define EVENT_HISTORY_OVERLOAD      65  // Переполнение истории
 #define EVENT_START						      66	// Включение водяного
+#define EVENT_SIM900_RESTART				67	// Принудительный рестарт модуля
 
 #define EVENT_NONE                  0xFF   // Пустое событие
 

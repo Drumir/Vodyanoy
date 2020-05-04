@@ -147,7 +147,7 @@ int main(void)
 		SIM900_GetBalance();
 	}
 
-  while (1) 
+  while (1)				/*				ГЛАВНЫЙ ЦИКЛ				ГЛАВНЫЙ ЦИКЛ				ГЛАВНЫЙ ЦИКЛ				ГЛАВНЫЙ ЦИКЛ				ГЛАВНЫЙ ЦИКЛ */
   {
 	if(OneMoreSecCount > 0) OneMoreSec();
 	if(bstat) OnKeyPress();
@@ -182,6 +182,20 @@ int main(void)
 				LCD_gotoXY(0, 4); LCD_writeString("SendingHistory");
         SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
+			if(TimeoutsCount > 5)				// Если за один сеанс связи произошло больше 5 таймаутов ожидания ответа от SIM900
+			{
+				SIM900_CheckLink();				// Проверим наличие связи
+				LCD_gotoXY(0, 4);
+				switch(SIM900Status){
+					case SIM900_BAT_FAIL:		{LCD_writePMstring(MSG_BatFail); break;}
+					case SIM900_FAIL:				{LCD_writePMstring(MSG_SimFail); break;}
+					case SIM900_GSM_FAIL:		{LCD_writePMstring(MSG_GSMFail); break;}
+					case SIM900_GPRS_FAIL:	{LCD_writePMstring(MSG_GPRSFail); break;}
+					default:								{LCD_writePMstring(MSG_Successful);}
+				}
+
+			}
+			TimeoutsCount = 0;
     } 
   }
 }
@@ -958,7 +972,7 @@ void measureBattery(void)
 	ADCSRA |= 1<<ADSC;		    // Старт преобразования
 	while (ADCSRA & 0x40);		// Ждем завершения(сброса флага ADSC в 0)
 	uint32_t vLongBat = ADC;
-	vLongBat *= 1027;					// Коррекция измерения
+	vLongBat *= 1026;					// Коррекция измерения
 	State.Vbat = vLongBat / 1000;         // Напряжение = ADC * 200
 }
 //---------------------------------------------------------------------
