@@ -9,6 +9,7 @@
 
 void SIM900_CheckLink(void)   // Проверяет состояние связи, при необходимости перезапускает модуль SIM900
 { 
+  LCD_gotoXY(0, 4); LCD_writeString("Проверка HTTP ");
 	uart_send("AT+HTTPINIT"); waitDropOK();
 	uart_send("AT+HTTPPARA=\"CID\",1"); waitDropOK();
 	strcpy(query, "AT+HTTPPARA=\"URL\",\""); strcat(query, options.Link); strcat(query, "?act=check\"");
@@ -23,12 +24,14 @@ void SIM900_CheckLink(void)   // Проверяет состояние связи, при необходимости пе
 		return;
 	}
 	SIM900Status = SIM900_HTTP_FAIL;  // Проверим наличие GPRS
+  LCD_gotoXY(0, 4); LCD_writeString("Проверка GPRS ");
 	SIM900_EnableGPRS();
 	if(SIM900Status == SIM900_GPRS_OK){
 		RecToHistory(EVENT_HTTP_FAIL);
 		return;	
 	}
 	SIM900Status = SIM900_GPRS_FAIL;  // Проверка GPRS провалена
+  LCD_gotoXY(0, 4); LCD_writeString("Проверка GSM  ");
 	SIM900_EnableGSM();
 	if(SIM900Status == SIM900_GSM_OK){
 		RecToHistory(EVENT_GPRS_FAIL);
@@ -36,6 +39,7 @@ void SIM900_CheckLink(void)   // Проверяет состояние связи, при необходимости пе
 	}
 	SIM900Status = SIM900_GSM_FAIL;  // Проверка GSM провалена
 	RecToHistory(EVENT_GSM_FAIL);
+  LCD_gotoXY(0, 4); LCD_writeString("ПерезапускSIM9");
   uart_send("AT+CPOWD=1");   // Выключим модуль
 	waitMessage(); dropMessage();     // Отбросим эхо
 	waitMessage(); dropMessage();     // Отбросим "NORMAL POWER DOWN"
@@ -176,10 +180,10 @@ void SIM900_EnableGSM(void)
     waitDropOK();      // Выбрасываем "ОК"
     iterations ++;
     _delay_ms(1500);
-  }while(iterations < 30);
+  }while(iterations < 10);
 
   SIM900Status = SIM900_GSM_OK;
-  if(iterations == 30) SIM900Status = SIM900_GSM_FAIL;
+  if(iterations == 10) SIM900Status = SIM900_GSM_FAIL;
 }
 //----------------------------------------------------------------
 void SIM900_GetTime(void)
@@ -256,10 +260,10 @@ void SIM900_EnableGPRS(void)
 		waitMessage();
 		if(strncmp((char*)rx.buf+rx.ptrs[0], "OK", 2) == 0){dropMessage(); break;}
 		dropMessage();
-    _delay_ms(2000);
-  } while(iterations < 30);
+    _delay_ms(1500);
+  } while(iterations < 10);
   SIM900Status = SIM900_GPRS_OK;
-  if(iterations == 30) SIM900Status = SIM900_GPRS_FAIL;
+  if(iterations == 10) SIM900Status = SIM900_GPRS_FAIL;
   
 }
 //----------------------------------------------------------------
