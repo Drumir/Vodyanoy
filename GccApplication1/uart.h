@@ -50,5 +50,7 @@ struct {\
 
 void uart_init(void);
 int uart_send(char *str);
+int uart_send_wo_CRLF(char *str);
+
 
 #endif //FIFO__H

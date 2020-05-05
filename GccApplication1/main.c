@@ -119,11 +119,18 @@ int main(void)
   sensor_write(0x44);   // старт измерения температуры
   _delay_ms(1000);
   State.Temp = sensor_write(0xBE); // чтение температурных данных c dc18_B_20 / dc18_S_20
-	measureBattery();
   sei();
+	measureBattery();
 	ShowStat();
 
-	LCD_gotoXY(0, 4); LCD_writePMstring(MSG_Loading);
+  LCD_gotoXY(0, 4); LCD_writePMstring(MSG_SIM900Start);
+  SIM900_PowerOn();	
+  if(SIM900Status >= SIM900_UP){
+    SIM900_GetTime();              // Актуализируем время.
+    RecToHistory(EVENT_START);     // Впишем в историю событие старта
+  }
+
+  LCD_gotoXY(0, 4); LCD_writePMstring(MSG_Loading);
   SIM900_PrepareConnection();
 	LCD_gotoXY(0, 4); 
 	switch(SIM900Status){
@@ -133,14 +140,6 @@ int main(void)
 		case SIM900_GPRS_FAIL:	{LCD_writePMstring(MSG_GPRSFail); break;}
 		default:								{LCD_writePMstring(MSG_Successful);}	
 	}
-
-    if(SIM900Status >= SIM900_UP){
-	    if (Now.yy == 0){
-		    SIM900_GetTime();              // Перед сеансом связи актуализируем время.
-		    RecToHistory(EVENT_START);     // Если сеанс первый - впишем в историю событие старта
-	    }
-	    else SIM900_GetTime();
-    }
 
 	if(SIM900Status >= SIM900_GSM_OK){
 		LCD_gotoXY(0, 4); LCD_writeString(" Get balance  ");
@@ -360,7 +359,7 @@ ISR(TIMER1_COMPA_vect) //обработка совпадения счетчика1. Частота 10Гц. (для 8МГц
   {
     Tacts = 0;
 		OneMoreSecCount ++;		//В главном цикле увидят, что OneMoreSecCount != 0 и вызовут OneMoreSec();
-		if(OneMoreSecCount > 240) SoftReset();  //Если главный цикл не выполнялся уже 240 секунд, выполним перезагрузку устройства
+//		if(OneMoreSecCount > 240) SoftReset();  //Если главный цикл не выполнялся уже 240 секунд, выполним перезагрузку устройства
   }
 }
 //----------------------------------------------------------------
@@ -635,6 +634,14 @@ int uart_send(char *str)
   FIFO_PUSH( uart_tx_fifo, CHAR_CR );  //CR
   FIFO_PUSH( uart_tx_fifo, CHAR_LF );  //LF
 
+  UCSRB |= ( 1 << UDRIE);  // Разрешаем прерывание по освобождению передатчика
+  return 0;
+}
+//----------------------------------------------------------------
+int uart_send_wo_CRLF(char *str)
+{
+  for(int i = 0; str[i] != 0; i ++)    //Помещаем строку в буфер передатчика
+  FIFO_PUSH( uart_tx_fifo, str[i] );
   UCSRB |= ( 1 << UDRIE);  // Разрешаем прерывание по освобождению передатчика
   return 0;
 }

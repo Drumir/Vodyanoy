@@ -90,7 +90,7 @@
 
 #define EVENT_NONE                  0xFF   // Пустое событие
 
-#define LIGHT_TIME						10		// Время работы подсветки. В сек
+#define LIGHT_TIME						60		// Время работы подсветки. В сек
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
 #define FIRST_CONNECT_DELAY		25 		// Время в секундах от включения устройства до первой попытки связи с сервером
@@ -214,7 +214,7 @@ void CheckNotifications(void);					// Проверяет наличие несделаных оповещений
 void ApplyDirectControl(void);					// Исполняет указания прямого удаленного управления
 
 
-uint8_t waitAnswer(char *answer, uint16_t timeout);
+uint8_t waitAnswer(char *answer, uint16_t timeout); // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0
 void waitDropOK(void);
 void dropMessage(void);
 int16_t str2int(char* str);
@@ -240,6 +240,9 @@ void SIM900_SendHistory(void);                     // Отошлем на сервер историю 
 void SIM900_SendSMS(char *number, char *text);	   // Отсылает смс с текстом text на номер number
 void SIM900_Call(char *number);										 // Звонит на номер number. При ответе сбрасывает
 void SIM900_CheckLink(void);											 // Проверяет состояние связи результат в SIM900Status
+uint16_t SIM900_OpenHttpGetSession(char *params);  // Открывает HTTP GET сессию с параметрами query, возващает код состояния
+void SIM900_CloseHttpGetSession(void);             // Закрывает HTTP GET сессию
+
 
 
 uint8_t								LightLeft, 					// Сколько осталось работать подсветке в сек.
@@ -271,6 +274,7 @@ char buf[23];			// Еще один буфер для дисплея
 
 static const char PM_link[]						PROGMEM	= "vodyanoy.000webhostapp.com/r.php";
 static const char MSG_BatFail[]				PROGMEM = "Battery_FAIL  ";
+static const char MSG_SIM900Start[]		PROGMEM = "ВключениеSIM90";
 static const char MSG_SimFail[]				PROGMEM = "SIM900_FAIL   ";
 static const char MSG_GSMFail[]				PROGMEM = "SIM90_GSM_FAIL";
 static const char MSG_GPRSFail[]			PROGMEM = "SIM9_GPRS_FAIL";
