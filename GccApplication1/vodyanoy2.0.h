@@ -78,6 +78,8 @@
 #define EVENT_GPRS_FAIL             52  // Модуль не может включить GPRS (отключен интернет?)
 #define EVENT_HTTP_FAIL             53  // Модуль не может подключиться к серверу (проблема  с сервером?)
 #define EVENT_NEW_REMOTE_SETTINGS   54  // Удаленно (через интернет) заданы новые настройки водяного
+#define EVENT_CHECK_CONN_OK         55  // Проверка связи функцией SIM900_CheckConnection прошла успешно
+#define EVENT_REPAIRCONN_OK         56  // Восстановление связи функцией SIM900_RepairConnection прошло успешно
 
 #define EVENT_BAT_FAIL              60  // Провалена проверка аккумулятора (слишком низкое напряжение)
 #define EVENT_NEW_LOCAL_SETTINGS    61  // Вручную (локально) заданы новые настройки водяного
@@ -86,7 +88,7 @@
 #define EVENT_RXB_OVERLOAD          64  // Переполнение приёмного буфера RX
 #define EVENT_HISTORY_OVERLOAD      65  // Переполнение истории
 #define EVENT_START						      66	// Включение водяного
-#define EVENT_SIM900_RESTART				67	// Принудительный рестарт модуля
+#define EVENT_SIM900_RESTART				67	// Принудительный рестарт модуля функцией SIM900_RepairConnection
 
 #define EVENT_NONE                  0xFF   // Пустое событие
 
@@ -221,6 +223,7 @@ int16_t str2int(char* str);
 void waitMessage(void);
 int8_t timeCompare(struct TTime *timeOne, struct TTime *timeTwo);
 void strcpyPM(char *dest, const char *PMsrc);		// Копирует из PROGMEM строку в dest;
+void ShowHistory(void);
 
 
 void SIM900_GetBalance(void);
@@ -231,7 +234,9 @@ void SIM900_GetTime(void);
 void SIM900_SetTimeFromServer(void);
 void SIM900_EnableGPRS(void);
 void SIM900_CheckHTTP(void);
-void SIM900_PrepareConnection(void);
+void SIM900_PrepareConnection(void);                // Подготавливает модуль SIM900 к использованию
+void SIM900_CheckConnection(void);								  // Проверяет состояние связи. Результат в SIM900Status
+void SIM900_RepairConnection(void);                 // Восстанавливает неработающую связь
 void SIM900_GetRemoteSettingsTimestamp(void);      // Получает время последнего изменения настроек на сервере
 void SIM900_SendSettings(void);                    // Отсылает настройки на сервер для сохранения
 void SIM900_GetSettings(void);                     // Берет настройки с сервера м применяет их
@@ -239,7 +244,6 @@ void SIM900_SendStatus(void);                      // Отошлем на сервер текущее 
 void SIM900_SendHistory(void);                     // Отошлем на сервер историю событий
 void SIM900_SendSMS(char *number, char *text);	   // Отсылает смс с текстом text на номер number
 void SIM900_Call(char *number);										 // Звонит на номер number. При ответе сбрасывает
-void SIM900_CheckLink(void);											 // Проверяет состояние связи результат в SIM900Status
 uint16_t SIM900_OpenHttpGetSession(char *params);  // Открывает HTTP GET сессию с параметрами query, возващает код состояния
 void SIM900_CloseHttpGetSession(void);             // Закрывает HTTP GET сессию
 

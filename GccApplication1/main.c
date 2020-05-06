@@ -154,6 +154,7 @@ int main(void)
 	CheckNotifications();               // Проверим не произошло ли какое-то событие о котором нужно уведомить админа/оператора 
     if(SilentLeft == 0)    // Проверим не пора ли организовать сеанс связи
     {
+      SIM900_GetTime();              // Перед сеансом связи актуализируем время.
       SilentLeft = options.ConnectPeriod*60 - 1L;    // Следующий сеанс связи через options.ConnectPeriod минут
        
       if(SIM900Status >= SIM900_GPRS_OK)    // Если со связью всё в порядке замутим сеанс связи с сервером
@@ -181,9 +182,9 @@ int main(void)
 				LCD_gotoXY(0, 4); LCD_writeString("SendingHistory");
         SIM900_SendHistory();                                                         // Отошлем на сервер историю событий
       }
-			if(TimeoutsCount > 5)				// Если за один сеанс связи произошло больше 5 таймаутов ожидания ответа от SIM900
+			if(TimeoutsCount > 5 || SIM900Status < SIM900_GPRS_OK)				// Если за один сеанс связи произошло больше 5 таймаутов ожидания ответа от SIM900
 			{
-				SIM900_CheckLink();				// Проверим наличие связи
+				SIM900_CheckConnection();				// Проверим наличие связи
 				LCD_gotoXY(0, 4);
 				switch(SIM900Status){
 					case SIM900_BAT_FAIL:		{LCD_writePMstring(MSG_BatFail); break;}
@@ -254,8 +255,8 @@ void OneMoreMin(void)
     SIM900_GetBalance();
   }
 
-  if(Min%5 == 0){
-    //SIM900_SendReport();
+  if(Min%20 == 0 && options.ConnectPeriod == 0){  // Если синхронизация только по звонку
+    SIM900_GetTime();           // Актуализируем время каждые 20 минут
   }  
 
   if(State.Vbat < 660){         // 3.3V
@@ -852,6 +853,8 @@ void DrawMenu(void)
     }
 		case MD_DEBUG:
 		{
+      ShowHistory();
+      /*
 			LCD_gotoXY(0, 0);LCD_writePMstringInv(MSG_Info);
 			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, strD, 10); strcat(buf, strD); strcat(buf, "V");
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
@@ -869,7 +872,7 @@ void DrawMenu(void)
 			itoa(options.localSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
 			LCD_gotoXY(0, 4);LCD_writeString(buf);
 			LCD_gotoXY(0, 5);LCD_writeString(options.AdminTel);
-			
+			*/
 		}
   }
 }
@@ -1104,4 +1107,33 @@ void CheckNotifications(void)
 		
 		Notifications.PowerRestore = 0;
 	}
+}
+
+//----------------------------------------------------------------
+void ShowHistory(void)                     // Отобразим на дисплее историю
+{
+  LCD_clear();
+  uint16_t ptr, count = 0, y = 0;
+  strcpy(strD, "");
+  for(ptr = 0; History[ptr].EventCode == EVENT_NONE && ptr < HISTORYLENGTH; ptr ++);  // Ищем первое непустое событие
+  if(ptr == HISTORYLENGTH){
+    LCD_gotoXY(0, y);
+    LCD_writeString("История пуста");
+    return; // В истории нет неотосланных событий
+  }  
+    
+  for(; History[ptr].EventCode != EVENT_NONE && ptr < HISTORYLENGTH; ptr ++)
+  {
+    itoa(History[ptr].EventCode, buf, 10);
+    strcat(strD, buf);
+    strcat(strD, " ");
+    if(count > 1 && count%4 == 0){
+      LCD_gotoXY(0, y);
+      LCD_writeString(strD);
+      y ++;
+      count = 0;
+      strcpy(strD, "");
+    }
+    else count ++;
+  }
 }

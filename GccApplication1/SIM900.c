@@ -7,41 +7,95 @@
 
 #include "vodyanoy2.0.h"
 
-void SIM900_CheckLink(void)   // Проверяет состояние связи, при необходимости перезапускает модуль SIM900
-{ 
+void SIM900_RepairConnection(void)   // Проверяет состояние связи, при необходимости перезапускает модуль SIM900
+{
+  LCD_gotoXY(0, 4); LCD_writeString("RepairConnect");
+  if(SIM900Status == SIM900_HTTP_FAIL || SIM900Status == SIM900_GPRS_FAIL){  // 
+    uart_send("AT+SAPBR=0,1");      //Выключим GPRS
+    waitMessage();dropMessage();	  // Отбросим эхо
+    waitDropOK();                   // Отбросим ОК
+    _delay_ms(3000);
+    SIM900_EnableGPRS();            // Включим GPRS
+    if(SIM900Status >= SIM900_GPRS_OK){   // Если включился нормально
+      RecToHistory(EVENT_REPAIRCONN_OK);  // Запишем в историю удачное восстановление
+      return;
+    }    
+    else
+      SIM900Status = SIM900_GSM_FAIL;     // Иначе считаем, что проблемма в GSM (или еще ниже)
+  }
+
+  if(SIM900Status == SIM900_GSM_FAIL){  //
+    uart_send("AT+CREG=0");         // Разрегистрируемся в сотовой сети
+    waitMessage();dropMessage();	  // Отбросим эхо
+    waitDropOK();                   // Отбросим ОК
+    waitMessage();dropMessage();	  // Отбросим ответ (если он вообще должен быть)
+    _delay_ms(3000);
+    uart_send("AT+CREG=1");         // Запустим регистрацию в сотовой сети
+    waitMessage();dropMessage();	  // Отбросим эхо
+    waitDropOK();                   // Отбросим ОК
+    waitMessage();dropMessage();	  // Отбросим ответ (если он вообще должен быть)
+    SIM900_EnableGSM();             // Ждем регистрации
+    if(SIM900Status >= SIM900_GSM_OK){   // Если Регистрация прошла успешно
+      SIM900_PrepareConnection();         // Продолжим процесс подключения
+      if(SIM900Status >= SIM900_GPRS_OK){   // Если повторное подключение успешно
+        RecToHistory(EVENT_REPAIRCONN_OK);  // Запишем в историю удачное восстановление
+        return;
+      }      
+      else 
+        SIM900Status = SIM900_GSM_FAIL;     // Иначе считаем, что проблемма на самом низком уровне
+    }
+    else
+    SIM900Status = SIM900_GSM_FAIL;     // Иначе считаем, что проблемма на самом низком уровне
+  }
+
+  if(SIM900Status == SIM900_GSM_FAIL){
+    uart_send("AT+CPOWD=1");   // Выключим модуль
+    waitMessage(); dropMessage();     // Отбросим эхо
+    waitMessage(); dropMessage();     // Отбросим "NORMAL POWER DOWN"
+    cbi(PORTD, 7);      // Отключаем питание SIM900
+    RecToHistory(EVENT_SIM900_RESTART);
+    SIM900Status = SIM900_NOTHING;
+    _delay_ms(5000);   // Ждем 5 сек
+    SIM900_PrepareConnection();		// Включаем и пробуем подключиться
+  }  
+}
+//----------------------------------------------------------------
+void SIM900_CheckConnection(void)   // Проверяет состояние связи, при необходимости перезапускает модуль SIM900
+{
   LCD_gotoXY(0, 4); LCD_writeString("Проверка HTTP ");
-	if(SIM900_OpenHttpGetSession("act=check") == 200){  // Если сервер вернул правильный статус запроса
+  if(SIM900_OpenHttpGetSession("act=check") == 200){  // Если сервер вернул правильный статус запроса
     SIM900_CloseHttpGetSession();
-		SIM900Status = SIM900_HTTP_OK;									// Со связью все ОК, сервер отвечает
-		return;
-	}
+    SIM900Status = SIM900_HTTP_OK;									// Со связью все ОК, сервер отвечает
+    RecToHistory(EVENT_CHECK_CONN_OK);
+    return;
+  }
   SIM900_CloseHttpGetSession();
-	SIM900Status = SIM900_HTTP_FAIL;  // Проверим наличие GPRS
+  SIM900Status = SIM900_HTTP_FAIL;  // Проверим наличие GPRS
 
   LCD_gotoXY(0, 4); LCD_writeString("Проверка GPRS ");
-	SIM900_EnableGPRS();
-	if(SIM900Status == SIM900_GPRS_OK){
-		RecToHistory(EVENT_HTTP_FAIL);
-		return;	
-	}
-	SIM900Status = SIM900_GPRS_FAIL;  // Проверка GPRS провалена
+  SIM900_EnableGPRS();
+  if(SIM900Status == SIM900_GPRS_OK){
+    RecToHistory(EVENT_HTTP_FAIL);
+    return;
+  }
+  SIM900Status = SIM900_GPRS_FAIL;  // Проверка GPRS провалена
   LCD_gotoXY(0, 4); LCD_writeString("Проверка GSM  ");
-	SIM900_EnableGSM();
-	if(SIM900Status == SIM900_GSM_OK){
-		RecToHistory(EVENT_GPRS_FAIL);
-		return;
-	}
-	SIM900Status = SIM900_GSM_FAIL;  // Проверка GSM провалена
-	RecToHistory(EVENT_GSM_FAIL);
+  SIM900_EnableGSM();
+  if(SIM900Status == SIM900_GSM_OK){
+    RecToHistory(EVENT_GPRS_FAIL);
+    return;
+  }
+  SIM900Status = SIM900_GSM_FAIL;  // Проверка GSM провалена
+  RecToHistory(EVENT_GSM_FAIL);
   LCD_gotoXY(0, 4); LCD_writeString("ПерезапускSIM9");
   uart_send("AT+CPOWD=1");   // Выключим модуль
-	waitMessage(); dropMessage();     // Отбросим эхо
-	waitMessage(); dropMessage();     // Отбросим "NORMAL POWER DOWN"
+  waitMessage(); dropMessage();     // Отбросим эхо
+  waitMessage(); dropMessage();     // Отбросим "NORMAL POWER DOWN"
   cbi(PORTD, 7);      // Отключаем питание SIM900
-	RecToHistory(EVENT_SIM900_RESTART);
+  RecToHistory(EVENT_SIM900_RESTART);
   _delay_ms(5000);   // Ждем 5 сек
-	SIM900Status = SIM900_NOTHING;
-	SIM900_PrepareConnection();		// Включаем и пробуем подключиться
+  SIM900Status = SIM900_NOTHING;
+  SIM900_PrepareConnection();		// Включаем и пробуем подключиться
 
 }
 //----------------------------------------------------------------
