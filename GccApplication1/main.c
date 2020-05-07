@@ -875,21 +875,20 @@ void DrawMenu(void)
 			LCD_gotoXY(0, 0);LCD_writePMstringInv(MSG_Info);
 			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, strD, 10); strcat(buf, strD); strcat(buf, "V");
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
-
+*/
 			strcpy(buf, "N");
 			itoa(Now.MM, strD, 10); strcat(buf, strD);itoa(Now.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(Now.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.ss, strD, 10); strcat(buf, strD);
-			LCD_gotoXY(0, 2);LCD_writeString(buf);
+			LCD_gotoXY(0, 3);LCD_writeString(buf);
 			strcpy(buf, "R");
 			itoa(remoteSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(remoteSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(remoteSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(remoteSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(remoteSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
-			LCD_gotoXY(0, 3);LCD_writeString(buf);
+			LCD_gotoXY(0, 4);LCD_writeString(buf);
 			strcpy(buf, "L");
 			itoa(options.localSettingsTimestamp.MM, strD, 10); strcat(buf, strD); itoa(options.localSettingsTimestamp.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(options.localSettingsTimestamp.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(options.localSettingsTimestamp.ss, strD, 10); strcat(buf, strD);
-			LCD_gotoXY(0, 4);LCD_writeString(buf);
-			LCD_gotoXY(0, 5);LCD_writeString(options.AdminTel);
-			*/
+			LCD_gotoXY(0, 5);LCD_writeString(buf);
+			
 		}
   }
 }

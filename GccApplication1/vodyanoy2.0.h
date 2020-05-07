@@ -82,6 +82,7 @@
 #define EVENT_REPAIRCONN_OK         56  // Восстановление связи функцией SIM900_RepairConnection прошло успешно
 #define EVENT_SIM900_RESTART				57	// Принудительный рестарт модуля функцией SIM900_RepairConnection
 #define EVENT_RESTART_BY_SMS				58	// Мягкая перезагрузка водяного по СМС
+#define EVENT_ERROR_601				      59	// Ошибка HTTP 601
 
 #define EVENT_BAT_FAIL              60  // Провалена проверка аккумулятора (слишком низкое напряжение)
 #define EVENT_NEW_LOCAL_SETTINGS    61  // Вручную (локально) заданы новые настройки водяного
