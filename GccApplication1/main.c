@@ -60,8 +60,15 @@ int main(void)
 	State.OpenDoorFlag = 0;
 	State.FloodingFlag = 0;
 	historyPtr = 0;
-	for(uint16_t i = 0; i < HISTORYLENGTH; i ++)		// Очистим буфер истории
-		History[i].EventCode = EVENT_NONE;
+  if(eeprom_read_word((void*)sizeof(struct TSettings)) == SOFT_RESET_FLAG){   // Если в EEPROM сохранена история, загрузим ее
+  	eeprom_read_block(&History, (void*)sizeof(struct TSettings)+2, sizeof(History)); // Загрузим сохраненную историю из EEPROM
+    eeprom_write_word((void*)sizeof(struct TSettings), 0);  //Запишем сразу после настроек число 0, означающий, что записанная история уже не актуальна
+    for(historyPtr = HISTORYLENGTH-1; History[historyPtr].EventCode == EVENT_NONE && historyPtr >= 0; historyPtr --);  // Ищем первое непустое событие
+	historyPtr ++; if(historyPtr == HISTORYLENGTH) historyPtr = 0;
+  }
+  else  // Иначе просто очистим историю
+    for(uint16_t i = 0; i < HISTORYLENGTH; i ++)		// Очистим буфер истории
+      History[i].EventCode = EVENT_NONE;
 
   
   Now.yy = 0;         // По нулю в количестве лет определим, что Now еще не актуализировалось
@@ -383,7 +390,11 @@ ISR(USART_RXC_vect) //Обработчик прерывания по окончанию приёма байта
 			{
 				SmsFromAdminFlag --;
 				if(strncmp("reset", (char*)rx.buf+rx.startptr, 5) == 0)	// Сравниваем текст смс от админа с "reset"
+        {
+          RecToHistory(EVENT_RESTART_BY_SMS);
+          SaveHistoryToEEPROM();
 					SoftReset();
+        }
 			}
 			if(strncmp("+CMT: \"+79040448302\"", (char*)rx.buf+rx.startptr, 20) == 0)		//Проверяем не смс ли это от админа
 				SmsFromAdminFlag = 2;
@@ -750,6 +761,12 @@ void Save(void)
 		RecToHistory(EVENT_NEW_LOCAL_SETTINGS);
 		settingsWasChanged = 0;
 	}
+}
+//---------------------------------------------------------------------
+void SaveHistoryToEEPROM(void)         // Сохраняет весь массив истории в EEPROM
+{
+  eeprom_write_word((void*)sizeof(struct TSettings), SOFT_RESET_FLAG);  //Запишем сразу после настроек число 0xAAAA, означающее, что дальше идет действительнаяистория
+	eeprom_write_block(&History, (void*)sizeof(struct TSettings)+2, sizeof(History)); // После флага запишем всю историю
 }
 //---------------------------------------------------------------------
 void PumpStop(void)
@@ -1119,11 +1136,10 @@ void ShowHistory(void)                     // Отобразим на дисплее историю
   if(ptr == HISTORYLENGTH){
     LCD_gotoXY(0, y);
     LCD_writeString("История пуста");
-    return; // В истории нет неотосланных событий
+    return; // В истории нет ни одного события
   }  
     
-  for(; History[ptr].EventCode != EVENT_NONE && ptr < HISTORYLENGTH; ptr ++)
-  {
+  for(; History[ptr].EventCode != EVENT_NONE && ptr < HISTORYLENGTH; ptr ++){
     itoa(History[ptr].EventCode, buf, 10);
     strcat(strD, buf);
     strcat(strD, " ");
@@ -1136,4 +1152,6 @@ void ShowHistory(void)                     // Отобразим на дисплее историю
     }
     else count ++;
   }
+	LCD_gotoXY(0, y);
+	LCD_writeString(strD);
 }

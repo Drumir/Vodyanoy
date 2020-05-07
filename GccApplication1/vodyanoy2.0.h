@@ -80,6 +80,8 @@
 #define EVENT_NEW_REMOTE_SETTINGS   54  // Удаленно (через интернет) заданы новые настройки водяного
 #define EVENT_CHECK_CONN_OK         55  // Проверка связи функцией SIM900_CheckConnection прошла успешно
 #define EVENT_REPAIRCONN_OK         56  // Восстановление связи функцией SIM900_RepairConnection прошло успешно
+#define EVENT_SIM900_RESTART				57	// Принудительный рестарт модуля функцией SIM900_RepairConnection
+#define EVENT_RESTART_BY_SMS				58	// Мягкая перезагрузка водяного по СМС
 
 #define EVENT_BAT_FAIL              60  // Провалена проверка аккумулятора (слишком низкое напряжение)
 #define EVENT_NEW_LOCAL_SETTINGS    61  // Вручную (локально) заданы новые настройки водяного
@@ -88,7 +90,6 @@
 #define EVENT_RXB_OVERLOAD          64  // Переполнение приёмного буфера RX
 #define EVENT_HISTORY_OVERLOAD      65  // Переполнение истории
 #define EVENT_START						      66	// Включение водяного
-#define EVENT_SIM900_RESTART				67	// Принудительный рестарт модуля функцией SIM900_RepairConnection
 
 #define EVENT_NONE                  0xFF   // Пустое событие
 
@@ -105,6 +106,7 @@
 #define RXBUFSTRCOUNT 10						// Размер массива для хранения смещений на начала принятых сообщений
 
 #define HISTORYLENGTH	40						// Длинна буфера истории. Размер больше в 4 раза
+#define SOFT_RESET_FLAG 0xAAAA
 
 FIFO( 128 ) uart_tx_fifo;						// Буфер передатчика UART 
 
@@ -207,7 +209,8 @@ void HeaterStop(void);
 void OneMoreMin(void);									// Еще одна минута прошла.
 void OneMoreSec(void);									// Еще одна секунда прошла.
 int AdcToVolts(int A);									// Преобразует измеренное АЦП напряжение в Вольты
-void RecToHistory(uint8_t eventCode);
+void RecToHistory(uint8_t eventCode);   // Записывает событие с кодом eventCode и текущим временем в историю
+void SaveHistoryToEEPROM(void);         // Сохраняет весь массив истории в EEPROM
 uint8_t ConnectToServer(void);					// Подключается к серверу для передачи статистики, получения настроек. возвращет 1 если все ок. Иначе 0
 void SoftReset(void);										// Вызыватся из прерывания таймера при подвисании основной программы на 60 сек
 void measureBattery(void);							// Измеряет напряжение аккумулятора, записывает его в state.vBat
