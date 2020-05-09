@@ -379,9 +379,9 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера и
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
     options.ConnectPeriod = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
-    options.fFreezeNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    options.fFrostNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
-    options.FreezeTemp = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
+    options.FrostTemp = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую
     options.fWarmNotifications = str2int((char*)rx.buf+rx.ptrs[0] + ++commaPosition );  
     while(*(rx.buf+rx.ptrs[0]+commaPosition) != ',' && *(rx.buf+rx.ptrs[0]+commaPosition) != '\0') commaPosition ++;  // Ищем в ответе запятую

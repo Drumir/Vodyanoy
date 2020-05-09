@@ -77,13 +77,13 @@ int main(void)
   eeprom_read_block(&options, (const void*)0x00, sizeof(struct TSettings));
 
 
-	if(options.fFreezeNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
+	if(options.fFrostNotifications == 0xFF || options.ConnectPeriod == 0xFFFF) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 //	if(1) 	// Если прочитался мусор (после перепрошивки) сбросим значения в поумолчанию.
 	{
-  	options.FrostFlag = 0;											// Флаг о возможной заморозке насоса
+  	options.FreezeFlag = 0;											// Флаг о возможной заморозке насоса
   	options.PumpWorkFlag = 0;										// Флаг, что в данный момент насос включен
 		options.DirectControlFlags = 0;
-    options.fFreezeNotifications = 0;           // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
+    options.fFrostNotifications = 0;            // Флаги оповещения об охлаждении. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
     options.fWarmNotifications = 0;             // Флаги оповещения о перегреве.
     options.fDoorNotifications = 0;             // Флаги оповещения об открытии двери.
     options.fFloodNotifications = 0;            // Флаги оповещения о затоплении.
@@ -103,7 +103,7 @@ int main(void)
     options.PumpTimeLeft = 0;		                // Сколько осталось качать/отдыхать насосу (в минутах?)
     options.HeaterOnTemp = 2;				            // Температура отключения обогревателя
     options.HeaterOffTemp = 10;			            // Температура включения обогревателя
-    options.FreezeTemp = 0;                    // Температура предупреждения о заморозке
+    options.FrostTemp = 0;                    // Температура предупреждения о заморозке
     options.WarmTemp = 40;                      // Температура предупреждения о перегреве
     options.localSettingsTimestamp.yy = 0;      // Время последнего обновления локальных настроек
     options.localSettingsTimestamp.MM = 0;
@@ -210,7 +210,7 @@ int main(void)
 void ApplyDirectControl(void)
 {
 	if(options.DirectControlFlags & 0b00010000)		// Сбросить состояние заморозки
-		options.FrostFlag = 0;
+		options.FreezeFlag = 0;
 	if(options.DirectControlFlags & 0b00001000)		// вЫключить обогреватель
 	{
 		HeaterStop(); RecToHistory(EVENT_HEATER_STOP_REMOTE);
@@ -255,15 +255,37 @@ void OneMoreMin(void)
 	  }
   }
 
+  if(State.Temp <= options.FrostTemp && Notifications.Frost == 0){
+	  Notifications.Frost = 1;
+	  RecToHistory(EVENT_FROST);
+  }
+  if(State.Temp > options.FrostTemp){
+	  Notifications.Frost = 0;
+  }
+
+  if(State.Temp >= options.WarmTemp && Notifications.Warm == 0){
+	  Notifications.Warm = 1;
+	  RecToHistory(EVENT_WARM);
+  }
+  if(State.Temp < options.WarmTemp){
+	  Notifications.Warm = 0;
+  }
+
 	Min ++;
-  if (Min == 60)
+  if (Min == 29)
   {
     Min = 0;
     SIM900_GetBalance();
+		if(State.balance < options.MinBalance && Notifications.Balance == 0){ //Если баланс ниже критического и оповещения о низком балансе еще не было
+			Notifications.Balance = 1;
+			RecToHistory(EVENT_LOW_BALANCE);
+		}
+		if(State.balance > options.MinBalance)	// Если баланс выше критического, сбросим флаг о том, что оповещение о низком балансе уже было произведено
+			Notifications.Balance = 0;
   }
 
-  if(Min%20 == 0 && options.ConnectPeriod == 0){  // Если синхронизация только по звонку
-    SIM900_GetTime();           // Актуализируем время каждые 20 минут
+  if(Min%5 == 0){     // Актуализируем время каждые 5 минут
+    SIM900_GetTime(); 
   }  
 
   if(State.Vbat < 660){         // 3.3V
@@ -314,7 +336,7 @@ void OneMoreSec(void)
     //  Temp >>= 4; // 4
     if((PORTC & 0b00000100) == 0 && State.Temp <= options.HeaterOnTemp*16){ HeaterStart(); RecToHistory(EVENT_HEATER_START_AUTO);}	//
     if((PORTC & 0b00000100) != 0 && State.Temp >= options.HeaterOffTemp*16){ HeaterStop(); RecToHistory(EVENT_HEATER_STOP_AUTO);}	// При необходимости включим или выключим обогреватель
-    if(State.Temp < -3 && options.PumpWorkFlag == 0 && options.FrostFlag != 1){ options.FrostFlag = 1; RecToHistory(EVENT_FREEZE);}
+    if(State.Temp < -3 && options.PumpWorkFlag == 0 && options.FreezeFlag != 1){ options.FreezeFlag = 1; RecToHistory(EVENT_FREEZE);}
   }
 
 
@@ -512,7 +534,7 @@ void OnKeyPress(void)
 			}
 			case MD_CLEAR:			// Забыть статистику
 			{
-				options.FrostFlag = 0;
+				options.FreezeFlag = 0;
 				State.PumpPause = 0;
 				MenuMode = MD_STAT;
 				settingsWasChanged = 1;
@@ -780,7 +802,7 @@ void PumpStop(void)
 uint8_t PumpStart(void)
 {
   if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return EVENT_PUMP_FAIL_NO_SCHEDULE;}
-  if(options.FrostFlag == 1){strcpy(strD, "Возм.заморозка"); return EVENT_PUMP_FAIL_FREEZE;}
+  if(options.FreezeFlag == 1){strcpy(strD, "Возм.заморозка"); return EVENT_PUMP_FAIL_FREEZE;}
   if(State.PumpPause > 0){ strcpy(strD, "Пауза "); itoa(State.PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return EVENT_PUMP_FAIL_NO_AC;}
 	if(State.PowerFailFlag == 1){ strcpy(strD, "ОтсутстЭлектич"); return EVENT_PUMP_FAIL_NO_AC;}
   options.PumpTimeLeft = options.PumpWorkDuration;
@@ -922,7 +944,7 @@ void ShowStat(void)
     strcat(buf, strD);
     strcat(buf, " сек.   ");
   }
-  if(options.FrostFlag == 1){
+  if(options.FreezeFlag == 1){
 		strcpyPM(buf, MSG_Freezing);
 	}
 	LCD_gotoXY(0, 2);	
@@ -1056,23 +1078,25 @@ void RecToHistory(uint8_t eventCode)
 //---------------------------------------------------------------------
 void CheckNotifications(void)
 {
-	if(Notifications.Freeze != 0)
+	if(Notifications.Frost == 1)
 	{
-		if(options.fFreezeNotifications & 0b00001100) // Смс Оператору или админу
+		if(options.fFrostNotifications & 0b00001100) // Смс Оператору или админу
 		{
 			strcpyPM(buf, MSG_Freezing);
-			if(options.fFreezeNotifications & 0b00001000) // Смс Оператору
+			if(options.fFrostNotifications & 0b00001000) // Смс Оператору
 			SIM900_SendSMS(options.OperatorTel, buf);
-			if(options.fFreezeNotifications & 0b00000100) // Смс Админу
+			if(options.fFrostNotifications & 0b00000100) // Смс Админу
 			SIM900_SendSMS(options.AdminTel, buf);
 		}
-		if(options.fFreezeNotifications & 0b00000010) // Звонок Оператору
+		if(options.fFrostNotifications & 0b00000010) // Звонок Оператору
 		SIM900_Call(options.OperatorTel);
-		if(options.fFreezeNotifications & 0b00000001) // Звонок Админу
+		if(options.fFrostNotifications & 0b00000001) // Звонок Админу
 		SIM900_Call(options.AdminTel);
+		
+		Notifications.Frost = -1;
 	}
 	
-	if(Notifications.Warm != 0)
+	if(Notifications.Warm == 1)
 	{
 		if(options.fWarmNotifications & 0b00001100) // Смс Оператору или админу
 		{
@@ -1086,9 +1110,11 @@ void CheckNotifications(void)
 		SIM900_Call(options.OperatorTel);
 		if(options.fWarmNotifications & 0b00000001) // Звонок Админу
 		SIM900_Call(options.AdminTel);
+		
+		Notifications.Warm = -1;
 	}
 	
-	if(Notifications.PowerFail != 0)
+	if(Notifications.PowerFail == 1)
 	{
 		if(options.fPowerNotifications & 0b00001100) // Смс Оператору или админу
 		{
@@ -1103,10 +1129,10 @@ void CheckNotifications(void)
 		if(options.fPowerNotifications & 0b00000001) // Звонок Админу
 		SIM900_Call(options.AdminTel);
 		
-		Notifications.PowerFail = 0;
+		Notifications.PowerFail = -1;
 	}
 
-	if(Notifications.PowerRestore != 0)
+	if(Notifications.PowerRestore == 1)
 	{
 		if(options.fPowerRestNotifications & 0b00001100) // Смс Оператору или админу
 		{
@@ -1121,7 +1147,25 @@ void CheckNotifications(void)
 		if(options.fPowerRestNotifications & 0b00000001) // Звонок Админу
 		SIM900_Call(options.AdminTel);
 		
-		Notifications.PowerRestore = 0;
+		Notifications.PowerRestore = -1;
+	}
+
+	if(Notifications.Balance == 1)
+	{
+		if(options.fBalanceNotifications & 0b00001100) // Смс Оператору или админу
+		{
+			strcpyPM(buf, MSG_BalanceLow);
+			if(options.fBalanceNotifications & 0b00001000) // Смс Оператору
+			SIM900_SendSMS(options.OperatorTel, buf);
+			if(options.fBalanceNotifications & 0b00000100) // Смс Админу
+			SIM900_SendSMS(options.AdminTel, buf);
+		}
+		if(options.fBalanceNotifications & 0b00000010) // Звонок Оператору
+		SIM900_Call(options.OperatorTel);
+		if(options.fBalanceNotifications & 0b00000001) // Звонок Админу
+		SIM900_Call(options.AdminTel);
+		
+		Notifications.Balance = -1;
 	}
 }
 

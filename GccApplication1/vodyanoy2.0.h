@@ -73,7 +73,7 @@
 #define EVENT_DOOR_OPEN             40  // Открытие входной двери
 #define EVENT_DOOR_CLOSE            41  // Закрытие входной двери
 
-#define EVENT_BALANCE								50  // Баланс ниже допустимого
+#define EVENT_LOW_BALANCE						50  // Баланс ниже допустимого
 #define EVENT_GSM_FAIL              51  // Модуль не может зарегистрироваться в GSM сети (нет сигнала?)
 #define EVENT_GPRS_FAIL             52  // Модуль не может включить GPRS (отключен интернет?)
 #define EVENT_HTTP_FAIL             53  // Модуль не может подключиться к серверу (проблема  с сервером?)
@@ -82,15 +82,16 @@
 #define EVENT_REPAIRCONN_OK         56  // Восстановление связи функцией SIM900_RepairConnection прошло успешно
 #define EVENT_SIM900_RESTART				57	// Принудительный рестарт модуля функцией SIM900_RepairConnection
 #define EVENT_RESTART_BY_SMS				58	// Мягкая перезагрузка водяного по СМС
-#define EVENT_ERROR_601				      59	// Ошибка HTTP 601
+#define EVENT_ERROR_601				      59	// Ошибка HTTP 601	
 
 #define EVENT_BAT_FAIL              60  // Провалена проверка аккумулятора (слишком низкое напряжение)
 #define EVENT_NEW_LOCAL_SETTINGS    61  // Вручную (локально) заданы новые настройки водяного
 #define EVENT_FREEZE                62  // Возможно заморозка
-#define EVENT_TOO_HOOT              63  // Перегрев
+#define EVENT_WARM									63  // Перегрев
 #define EVENT_RXB_OVERLOAD          64  // Переполнение приёмного буфера RX
 #define EVENT_HISTORY_OVERLOAD      65  // Переполнение истории
 #define EVENT_START						      66	// Включение водяного
+#define EVENT_FROST									67  // Переохлаждение
 
 #define EVENT_NONE                  0xFF   // Пустое событие
 
@@ -98,7 +99,7 @@
 #define PUMP_RESTART_PAUSE		30	  // Длительность паузы перед повторным включением насоса. В сек
 #define DELTA_TIME						15		// Квант времени в задании расписания. В минутах
 #define FIRST_CONNECT_DELAY		25 		// Время в секундах от включения устройства до первой попытки связи с сервером
-#define UNSTABLE_POWER_DELAY	10		// Время в секундах которое должно пройти после включения питания, чтобы система начала считать питание стабильным.
+#define UNSTABLE_POWER_DELAY	10		// Время в секундах которое должно пройти после включения питания, чтобы можно было считать питание стабильным.
 
 #define LIGHT_ON	PORTB &= ~(1 << 3)
 #define LIGHT_OFF PORTB |= (1 << 3)
@@ -116,34 +117,35 @@ struct TTime {
 };
 
 struct TState {
-  int16_t balance;				// Количество средств на симкарте в рублях. Копейки отбрасываются
-  int16_t Temp;						// Текущая температура в помещении умноженная на 16
-  uint16_t Vbat;					// Напряжение на аккуме умноженное на 200
-	uint8_t PowerFailFlag;	//Флаг отказа питания
-	uint8_t OpenDoorFlag;		//Флаг открытой двери
-	uint8_t FloodingFlag;		//Флаг затопления
+  int16_t balance;						// Количество средств на симкарте в рублях. Копейки отбрасываются
+  int16_t Temp;								// Текущая температура в помещении умноженная на 16
+  uint16_t Vbat;							// Напряжение на аккуме умноженное на 200
+	uint8_t PowerFailFlag;			//Флаг отказа питания
+	uint8_t OpenDoorFlag;				//Флаг открытой двери
+	uint8_t FloodingFlag;				//Флаг затопления
 	uint16_t PowerFailSecCount; // Счетчик секунд до момента, когда питание можно считать стабильным
 	uint16_t PumpPause;			    // Задержка перед повторным включением насоса в сек
 	
 }State;
 
-struct TNotifications {
-	uint8_t Freeze,
-					Warm,
-					Door,
-					Flood,
-					PowerFail,
-					PowerRestore,
-					Offline,
-					Balance,
-					Daily;
+struct TNotifications {		// Флаги о наступлении событий о которых нужно оповещать оператора/админа
+// 0 - событие не наступило, 1 - событие наступило, оповещения еще не было, -1 - Событие наступило, оповещение уже произведено
+	int8_t	Frost,				// Флаг о низкой температуре 
+					Warm,					// Флаг о высокой температуре
+					Door,					// Флаг открытия двери
+					Flood,				// Флаг затопления помещения
+					PowerFail,		// Флаг потери сетевого напряжения
+					PowerRestore,	// Флаг восстановления сетевого напряжения
+					Offline,			// Флаг слишком длительного отсутствия связи
+					Balance,			// Флаг низкого баланса
+					Daily;				// Флаг ежедневного оповещения о сотоянии
 	}Notifications;
 
 struct TSettings {          // Структура для хранения всех сохраняемых в eeprom настроек и переменных.
-  uint8_t       FrostFlag,		            // Флаг того, что температура падала до -3*С и, возможно, насос замерз.
+  uint8_t	FreezeFlag,				// Флаг того, что температура падала до -3*С и, возможно, насос замерз.
   PumpWorkFlag,             // Флаг, что в данный момент насос должен работать
 	DirectControlFlags,				// Флаги прямого удаленного управления 0b000,СброситьЗаморозку, вЫк обогрев, Вкл обогрев, вЫк насос, Вкл насос
-  fFreezeNotifications,     // Флаги оповещения о заморозке. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
+  fFrostNotifications,			// Флаги оповещения об охлаждении. 1 в 3 бите - смс оператору. Во 2 бите - смс админу. в 1 - звонок оператору. в 0 - звонок админу.
   fWarmNotifications,       // Флаги оповещения о перегреве.
   fDoorNotifications,       // Флаги оповещения об открытии двери.
   fFloodNotifications,      // Флаги оповещения о затоплении.
@@ -153,22 +155,22 @@ struct TSettings {          // Структура для хранения всех сохраняемых в eeprom 
   fBalanceNotifications,    // Флаги оповещения о критическом балансе на счёте
   fDailyNotifications;      // Флаги ежедневного оповещения о состоянии
   
-  char          OperatorTel[11],          // Номер телефона оператора
+  char	OperatorTel[11],		// Номер телефона оператора
   AdminTel[11],             // Номер телефона администратора
 	Link[40];									// Адрес сервера формата "vodyanoy.000webhostapp.com/r.php"
   
   
-  uint16_t			PumpWorkDuration,  	      // Сколько времени должен работать насос (в минутах)
+  uint16_t PumpWorkDuration,// Сколько времени должен работать насос (в минутах)
   PumpRelaxDuration, 	      // Сколько времени должен отдыхать насос (в минутах)
   ConnectPeriod,            // Период (в минутах) докладов на сервер. Если 0 - только при необходимости или по звонку
   DisconnectionTime,        // Длительность отсутствия связи для оповещения об отсутствии связи
   MinBalance,               // Баланс, при достижении которого нужно оповестить о критическом балансе
   DailyReportTime;          // Время ежедневного отчета о состоянии (в минутах с начала суток)
 
-  int16_t				PumpTimeLeft,		          // Сколько осталось качать/отдыхать насосу (в минутах)
+  int16_t	PumpTimeLeft,			// Сколько осталось качать/отдыхать насосу (в минутах)
   HeaterOnTemp,				      // Температура отключения обогревателя
   HeaterOffTemp,			      // Температура включения обогревателя
-  FreezeTemp,               // Температура предупреждения о заморозке
+  FrostTemp,								// Температура предупреждения об охлаждении
   WarmTemp;                 // Температура предупреждения о перегреве
 
   
@@ -299,6 +301,7 @@ static const char MSG_Freezing[]			PROGMEM = "Возм.заморозка";
 static const char MSG_Warming[]				PROGMEM = "  Peregrev!   ";
 static const char MSG_PowerLost[]			PROGMEM = "Elektropitanie otklu4eno!";
 static const char MSG_PowerRestore[]	PROGMEM = "Elektropitanie vostanovleno";
+static const char MSG_BalanceLow[]		PROGMEM = "Nizkiy balans";
 static const char MSG_RightNow[]			PROGMEM = " Прямо сейчас ";
 static const char MSG_WorkRelax[]			PROGMEM = " Работ  Стоит ";
 static const char MSG_OnOff[]					PROGMEM = "  ВКЛ   ВыКЛ  ";
