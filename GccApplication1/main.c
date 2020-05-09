@@ -11,8 +11,8 @@
 int main(void)
 {
 	ACSR |= 0x80;			// Выключим не нужный, но включеный по умолчанию аналоговый компаратор
-  DDRC  = 0b11111100;    // 7-н, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-отладка, 2-ТЭН, 1-н, 0-н
-  PORTC = 0b01100000;
+  DDRC  = 0b01111100;    // 7-Датчик потопа, 6-DQ DS18B20, 5-LCD_RESET, 4-насос, 3-LCD_DC, 2-ТЭН, 1-н, 0-н
+  PORTC = 0b11100000;
   DDRD =  0b10000010;    // 7-En4V, 6-3 клава, 2-геркон, 1-TX, 0-RX
   PORTD = 0b01111000;
   DDRB  = 0b11111010;    // 7-LCD_CLK, 6-LCD_DC, 5-LCD_MOSI, 4-LCD_SS, 3 - подсветка дисплея, 2-power_fail, 1 - SIM900_pwrkey, 0 - SIM900_status
@@ -326,7 +326,7 @@ void OneMoreSec(void)
     Seconds --;
     return;
   }
-  
+
   if(Seconds == 33){         // Каждую 33 секунду
     sensor_write(0x44);   // старт измерения температуры
   }

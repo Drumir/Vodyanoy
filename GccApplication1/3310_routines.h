@@ -15,8 +15,8 @@
 #include "global.h"
 
 
-#define SET_DC_PIN                 PORTC |= (1 << 7)
-#define CLEAR_DC_PIN               PORTC &= ~(1 << 7)
+#define SET_DC_PIN                 PORTC |= (1 << 3)
+#define CLEAR_DC_PIN               PORTC &= ~(1 << 3)
 #define SET_SCE_PIN                PORTB |= (1 << 4)
 #define CLEAR_SCE_PIN              PORTB &= ~(1 << 4)
 #define SET_RST_PIN                PORTC |= (1 << 5)
