@@ -299,6 +299,7 @@ static const char MSG_Blank[]					PROGMEM = "              ";
 static const char MSG_ToReset[]				PROGMEM = "   Сбросить   ";
 static const char MSG_Freezing[]			PROGMEM = "Возм.заморозка";
 static const char MSG_Warming[]				PROGMEM = "  Peregrev!   ";
+static const char MSG_Frost[]					PROGMEM = "Pereohlazdenie!";
 static const char MSG_PowerLost[]			PROGMEM = "Elektropitanie otklu4eno!";
 static const char MSG_PowerRestore[]	PROGMEM = "Elektropitanie vostanovleno";
 static const char MSG_BalanceLow[]		PROGMEM = "Nizkiy balans";

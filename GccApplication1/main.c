@@ -255,19 +255,19 @@ void OneMoreMin(void)
 	  }
   }
 
-  if(State.Temp <= options.FrostTemp && Notifications.Frost == 0){
+  if(State.Temp/16 <= options.FrostTemp && Notifications.Frost == 0){
 	  Notifications.Frost = 1;
 	  RecToHistory(EVENT_FROST);
   }
-  if(State.Temp > options.FrostTemp){
+  if(State.Temp/16 > options.FrostTemp){
 	  Notifications.Frost = 0;
   }
 
-  if(State.Temp >= options.WarmTemp && Notifications.Warm == 0){
+  if(State.Temp/16 >= options.WarmTemp && Notifications.Warm == 0){
 	  Notifications.Warm = 1;
 	  RecToHistory(EVENT_WARM);
   }
-  if(State.Temp < options.WarmTemp){
+  if(State.Temp/16 < options.WarmTemp){
 	  Notifications.Warm = 0;
   }
 
@@ -336,7 +336,7 @@ void OneMoreSec(void)
     //  Temp >>= 4; // 4
     if((PORTC & 0b00000100) == 0 && State.Temp <= options.HeaterOnTemp*16){ HeaterStart(); RecToHistory(EVENT_HEATER_START_AUTO);}	//
     if((PORTC & 0b00000100) != 0 && State.Temp >= options.HeaterOffTemp*16){ HeaterStop(); RecToHistory(EVENT_HEATER_STOP_AUTO);}	// При необходимости включим или выключим обогреватель
-    if(State.Temp < -3 && options.PumpWorkFlag == 0 && options.FreezeFlag != 1){ options.FreezeFlag = 1; RecToHistory(EVENT_FREEZE);}
+    if(State.Temp/16 < -3 && options.PumpWorkFlag == 0 && options.FreezeFlag != 1){ options.FreezeFlag = 1; RecToHistory(EVENT_FREEZE);}
   }
 
 
@@ -1082,7 +1082,7 @@ void CheckNotifications(void)
 	{
 		if(options.fFrostNotifications & 0b00001100) // Смс Оператору или админу
 		{
-			strcpyPM(buf, MSG_Freezing);
+			strcpyPM(buf, MSG_Frost);
 			if(options.fFrostNotifications & 0b00001000) // Смс Оператору
 			SIM900_SendSMS(options.OperatorTel, buf);
 			if(options.fFrostNotifications & 0b00000100) // Смс Админу
