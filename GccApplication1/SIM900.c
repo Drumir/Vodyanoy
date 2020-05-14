@@ -494,8 +494,8 @@ uint16_t SIM900_OpenHttpGetSession(char *params)                     // Открывае
   http_code = str2int((char*)(rx.buf+rx.ptrs[0] + 14));
   if(http_code != 200)
     TimeoutsCount ++;
-  if(http_code == 601){
-    RecToHistory(EVENT_ERROR_601);
+  if(http_code >= 600){
+    RecToHistory(EVENT_ERROR_60X);
     TimeoutsCount = 10;
   }
   dropMessage();	
