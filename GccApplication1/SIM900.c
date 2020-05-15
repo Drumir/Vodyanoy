@@ -217,13 +217,16 @@ void SIM900_GetTime(void)
 	if(SIM900Status < SIM900_UP) return;
 	uart_send("AT+CCLK?");  //		uart_send("AT+CCLK=\"20/04/02,14:43:00+03\"");
 	waitMessage(); dropMessage();     // Отбросим эхо
-	waitMessage(); 
-	Now.yy = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+8);
-	Now.MM = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+11);
-	Now.dd = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+14);
-	Now.hh = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+17);
-	Now.mm = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+20);
-	Now.ss = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+23);
+	waitMessage();                    // +CCLK: "20/05/15,19:02:09+03"
+  if(strlen((char*)rx.buf+rx.ptrs[0]) == 29)
+  {
+	  Now.yy = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+8);
+	  Now.MM = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+11);
+	  Now.dd = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+14);
+	  Now.hh = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+17);
+	  Now.mm = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+20);
+	  Now.ss = (uint8_t) str2int((char*)rx.buf+rx.ptrs[0]+23);
+  }  
 	dropMessage();     // Отбросим ответ
 	waitDropOK();     // Отбросим ОК
 }
@@ -232,7 +235,7 @@ void SIM900_SetTimeFromServer(void)
 {
   if(SIM900Status < SIM900_GPRS_OK) return;
   if(SIM900_OpenHttpGetSession("act=getSrvTime") == 200){  // Если сервер вернул правильный статус запроса
-	  uart_send("AT+HTTPREAD=0,128");
+    uart_sendPM(MSG_HTTPREAD);
 	  waitMessage(); dropMessage();     // Отбросим эхо
 	  waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
 	  waitMessage();																// {"status":"success","result":"20 04 04,10:05:33"}
@@ -281,7 +284,7 @@ void SIM900_GetBalance(void)
 {
   if(SIM900Status < SIM900_REG_GSM) return;
   //  uart_send("AT+CUSD=1,\"*120#\"");         // Баланс на английском   AT+CUSD=1,"*120$23"$0d
-  uart_send("AT+CUSD=1,\"*105*5#\"");         // Запрос баланса  AT+CUSD=1,"*105*5$23"$0d
+  uart_sendPM(MSG_Balance);         // Запрос баланса  AT+CUSD=1,"*105*5$23"$0d
   waitMessage(); dropMessage();     // Отбросим эхо
   waitDropOK();     // Отбросим ОК
   waitMessage();
@@ -295,7 +298,7 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
   if(SIM900Status < SIM900_GPRS_OK) return;
 
   if(SIM900_OpenHttpGetSession("act=gts") == 200){  // Если сервер вернул правильный статус запроса
-    uart_send("AT+HTTPREAD=0,128");
+    uart_sendPM(MSG_HTTPREAD);
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage(); 
@@ -316,13 +319,6 @@ void SIM900_GetRemoteSettingsTimestamp(void)      // Получает время последнего и
     remoteSettingsTimestamp.mm = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+10);
     remoteSettingsTimestamp.ss = str2int((char*)rx.buf+rx.ptrs[0]+commaPosition+13);
 
-/*    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+46, 2); remoteSettingsTimestamp.yy = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+49, 2); remoteSettingsTimestamp.MM = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+52, 2); remoteSettingsTimestamp.dd = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+55, 2); remoteSettingsTimestamp.hh = str2int(strS);  // На сервере установлено мировое время
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+58, 2); remoteSettingsTimestamp.mm = str2int(strS);
-    strncpy(strS, (char*)rx.buf+rx.ptrs[0]+61, 2); remoteSettingsTimestamp.ss = str2int(strS);*/
-		//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]+44);
     dropMessage();     // Отбросим прочитанное
     waitDropOK();     // Отбросим "ОК"
   }
@@ -348,7 +344,7 @@ void SIM900_GetSettings(void)                     // Берет настройки с сервера и
   uint16_t commaPosition = 0;
   if(SIM900Status < SIM900_GPRS_OK) return;
   if(SIM900_OpenHttpGetSession("act=GetSettings") == 200){  // Если сервер вернул правильный статус запроса
-    uart_send("AT+HTTPREAD=0,128");
+    uart_sendPM(MSG_HTTPREAD);
     waitMessage(); dropMessage();     // Отбросим эхо
     waitMessage(); dropMessage();     // Отбросим "+HTTPREAD:22"
     waitMessage();                    // {"status":"success","result":"180315230102,120,240,3,10,5,8,-1,8,40,8,8,8,8,8,60,8,20,8,960,9027891301,9040448302"}
@@ -449,7 +445,7 @@ void SIM900_SendHistory(void)                     // Отошлем на сервер историю с
 void SIM900_SendSMS(char *number, char *text)	   // Отсылает смс с текстом text на номер number
 {
   if(SIM900Status < SIM900_GSM_OK) return;
-	strcpy(strS, "AT+CMGS=\"+7");
+	strcpyPM(strS, MSG_AT_CMGS);
 	strcat(strS, number);
 	strcat(strS, "\"");
 	uart_send(strS);
@@ -481,13 +477,13 @@ void SIM900_Call(char *number)										 // Звонит на номер number.
 uint16_t SIM900_OpenHttpGetSession(char *params)                     // Открывает HTTP GET сессию с параметрами query, обрабатывает код состояния
 {
   uint16_t http_code = 0;
-  uart_send("AT+HTTPINIT");
+  uart_sendPM(MSG_HTTPINIT);
   waitDropOK();
-  uart_send("AT+HTTPPARA=\"CID\",1");
+  uart_sendPM(MSG_HTTPPARACID);
   waitDropOK();
-  uart_send_wo_CRLF("AT+HTTPPARA=\"URL\",\""); uart_send_wo_CRLF(options.Link); uart_send_wo_CRLF("?"); uart_send_wo_CRLF(params); uart_send("\"");
+  uart_sendPM_wo_CRLF(MSG_HTTPPARAURL); uart_send_wo_CRLF(options.Link); uart_send_wo_CRLF("?"); uart_send_wo_CRLF(params); uart_send("\"");
   waitDropOK();
-  uart_send("AT+HTTPACTION=0");   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
+  uart_sendPM(MSG_HTTPACTION0);   // Ответом будет: эхо / ок, / +HTTPACTION:1,200,20
   waitMessage(); dropMessage();     // Отбросим эхо
   waitDropOK();     // Отбросим "ОК"
   waitMessage();  // +HTTPACTION:0,200,32
@@ -504,7 +500,7 @@ uint16_t SIM900_OpenHttpGetSession(char *params)                     // Открывае
 //----------------------------------------------------------------
 void SIM900_CloseHttpGetSession(void)                     // Закрывает HTTP GET сессию
 {
-	uart_send("AT+HTTPTERM");   // Ответом будет: эхо / ок,
+	uart_sendPM(MSG_HTTPTERM);   // Ответом будет: эхо / ок,
 	waitMessage(); dropMessage();     // Отбросим эхо
 	waitDropOK();     // Отбросим "ОК"
 }

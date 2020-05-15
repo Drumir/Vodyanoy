@@ -680,6 +680,26 @@ int uart_send_wo_CRLF(char *str)
   return 0;
 }
 //----------------------------------------------------------------
+int uart_sendPM(const char *str)
+{
+  for(int i = 0; pgm_read_byte(str + i) != 0; i ++)    //Помещаем строку в буфер передатчика
+    FIFO_PUSH( uart_tx_fifo, 	pgm_read_byte(str + i) );
+
+  FIFO_PUSH( uart_tx_fifo, CHAR_CR );  //CR
+  FIFO_PUSH( uart_tx_fifo, CHAR_LF );  //LF
+
+  UCSRB |= ( 1 << UDRIE);  // Разрешаем прерывание по освобождению передатчика
+  return 0;
+}
+//----------------------------------------------------------------
+int uart_sendPM_wo_CRLF(const char *str)
+{
+  for(int i = 0; pgm_read_byte(str + i) != 0; i ++)    //Помещаем строку в буфер передатчика
+    FIFO_PUSH( uart_tx_fifo, 	pgm_read_byte(str + i) );
+  UCSRB |= ( 1 << UDRIE);  // Разрешаем прерывание по освобождению передатчика
+  return 0;
+}
+//----------------------------------------------------------------
 uint8_t waitAnswer(char *answer, uint16_t timeout)  // Ожидает ответа от sim900, сравнивает с заданым. Если равны, возвращает 1. По таймауту (в сек/10) возвращает 0
 {
   TimeoutTackts = timeout;			// Запустим отсчёт таймаута
@@ -949,7 +969,7 @@ void ShowStat(void)
 	}
 	LCD_gotoXY(0, 2);	
 	if(State.PowerFailFlag == 0) LCD_writeString(buf);					// Отобразим "время до" или предупреждение насоса если есть
-	else LCD_writeString("Сбой элект-ния");
+	else LCD_writePMstring(MSG_PowerFail);
 
 	itoa(State.balance, buf, 10); strcat(buf, "p "); itoa(State.Vbat/2, strD, 10); strcat(buf, strD); strcat(buf, "v ");
 	if(SilentLeft > 180){

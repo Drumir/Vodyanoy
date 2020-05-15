@@ -304,6 +304,7 @@ static const char MSG_PowerLost[]			PROGMEM = "Elektropitanie otklu4eno!";
 static const char MSG_PowerRestore[]	PROGMEM = "Elektropitanie vostanovleno";
 static const char MSG_BalanceLow[]		PROGMEM = "Nizkiy balans";
 static const char MSG_RightNow[]			PROGMEM = " Прямо сейчас ";
+static const char MSG_PowerFail[]			PROGMEM = "Сбой электрния";
 static const char MSG_WorkRelax[]			PROGMEM = " Работ  Стоит ";
 static const char MSG_OnOff[]					PROGMEM = "  ВКЛ   ВыКЛ  ";
 static const char MSG_Pump[]					PROGMEM = "    Насос     ";
@@ -315,6 +316,13 @@ static const char MSG_ToStat[]				PROGMEM = "  статистику  ";
 static const char MSG_Info[]					PROGMEM = "Отлад-я инфо-я";
 static const char MSG_TimerOff[]			PROGMEM = "Таймер ОТКЛ   ";
 static const char MSG_Celsium[]				PROGMEM = "*C           ";
-
+static const char MSG_Balance[]				PROGMEM = "AT+CUSD=1,\"*105*5#\"";
+static const char MSG_HTTPINIT[]			PROGMEM = "AT+HTTPINIT";
+static const char MSG_HTTPPARACID[]		PROGMEM = "AT+HTTPPARA=\"CID\",1";
+static const char MSG_HTTPPARAURL[]		PROGMEM = "AT+HTTPPARA=\"URL\",\"";
+static const char MSG_HTTPACTION0[]		PROGMEM = "AT+HTTPACTION=0";
+static const char MSG_HTTPTERM[]  		PROGMEM = "AT+HTTPTERM";
+static const char MSG_AT_CMGS[] 	    PROGMEM = "AT+CMGS=\"+7";
+static const char MSG_HTTPREAD[] 	    PROGMEM = "AT+HTTPREAD=0,128";
 																					
 #endif  // VODYANOY20_H
