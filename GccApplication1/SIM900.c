@@ -288,7 +288,7 @@ void SIM900_GetBalance(void)
   waitMessage(); dropMessage();     // Отбросим эхо
   waitDropOK();     // Отбросим ОК
   waitMessage();
-	//strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
+	strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
   State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
   dropMessage();     // Отбросим
 }

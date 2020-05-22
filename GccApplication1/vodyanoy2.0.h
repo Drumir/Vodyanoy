@@ -280,7 +280,7 @@ char strD[23];		// Буфер для использования в выводе на дисплей
 char strS[100];		// Буфер для использования в функциях SIM900
 char query[100];  // Текстовый буфер для формирования Http запросов.
 char buf[23];			// Еще один буфер для дисплея
-//char DebugStr[35];
+char DebugStr[30];
 
 static const char PM_link[]						PROGMEM	= "vodyanoy.000webhostapp.com/r.php";
 static const char MSG_BatFail[]				PROGMEM = "Battery_FAIL  ";
@@ -314,8 +314,10 @@ static const char MSG_Off[]						PROGMEM = "     ВыКЛ     ";
 static const char MSG_ToSettings[]		PROGMEM = "  настройки   ";
 static const char MSG_ToStat[]				PROGMEM = "  статистику  ";
 static const char MSG_Info[]					PROGMEM = "Отлад-я инфо-я";
-static const char MSG_TimerOff[]			PROGMEM = "Таймер ОТКЛ   ";
+static const char MSG_TimerOff[]			PROGMEM = "Нет расписания";
+static const char MSG_Pause[]   			PROGMEM = "Пауза ";
 static const char MSG_Celsium[]				PROGMEM = "*C           ";
+static const char MSG_Celsium1[]	    PROGMEM = "*C    ";
 static const char MSG_Balance[]				PROGMEM = "AT+CUSD=1,\"*105*5#\"";
 static const char MSG_HTTPINIT[]			PROGMEM = "AT+HTTPINIT";
 static const char MSG_HTTPPARACID[]		PROGMEM = "AT+HTTPPARA=\"CID\",1";

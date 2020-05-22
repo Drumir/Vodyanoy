@@ -272,7 +272,7 @@ void OneMoreMin(void)
   }
 
 	Min ++;
-  if (Min == 29)
+  if (Min == 60)
   {
     Min = 0;
     SIM900_GetBalance();
@@ -321,11 +321,12 @@ void OneMoreSec(void)
   if(LightLeft == 0) {LightLeft = -1; LIGHT_OFF; Save(); MenuMode = MD_STAT;}
 
       // ????????????
+      /*
   if(State.PumpPause != 0 && options.PumpTimeLeft < 3)	// Если таймер на паузе перед включением и скоро включение - время не отсчитывается!
   {
     Seconds --;
     return;
-  }
+  }*/
 
   if(Seconds == 33){         // Каждую 33 секунду
     sensor_write(0x44);   // старт измерения температуры
@@ -776,7 +777,7 @@ void dropMessage(void)
 //----------------------------------------------------------------
 int16_t str2int(char* str)
 {
-  uint8_t minus = 1;
+  int8_t minus = 1;
   uint16_t result = 0;
   while(*str != '\0' && (*str > '9' || *str < '0')) str ++;   // Ищем первую цифру или конец строки
   if(*str == '\0') return 0;                                  // Если нашли конец строки, возвращаем 0
@@ -821,10 +822,10 @@ void PumpStop(void)
 //---------------------------------------------------------------------
 uint8_t PumpStart(void)
 {
-  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpy(strD, "Нет расписания"); return EVENT_PUMP_FAIL_NO_SCHEDULE;}
-  if(options.FreezeFlag == 1){strcpy(strD, "Возм.заморозка"); return EVENT_PUMP_FAIL_FREEZE;}
-  if(State.PumpPause > 0){ strcpy(strD, "Пауза "); itoa(State.PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return EVENT_PUMP_FAIL_NO_AC;}
-	if(State.PowerFailFlag == 1){ strcpy(strD, "ОтсутстЭлектич"); return EVENT_PUMP_FAIL_NO_AC;}
+  if(options.PumpWorkDuration == 0  || options.PumpRelaxDuration == 0){strcpyPM(strD, MSG_TimerOff); return EVENT_PUMP_FAIL_NO_SCHEDULE;}
+  if(options.FreezeFlag == 1){strcpyPM(strD, MSG_Freezing); return EVENT_PUMP_FAIL_FREEZE;}
+  if(State.PumpPause > 0){ strcpyPM(strD, MSG_Pause); itoa(State.PumpPause, buf, 10); strcat(strD, buf); strcat(strD, " сек   ");return EVENT_PUMP_FAIL_NO_AC;}
+	if(State.PowerFailFlag == 1){ strcpyPM(strD, MSG_PowerFail); return EVENT_PUMP_FAIL_NO_AC;}
   options.PumpTimeLeft = options.PumpWorkDuration;
   CheckUPause = 20;		// 2 секунды не проверять питающее напряжение!
   options.PumpWorkFlag = 1;
@@ -873,7 +874,7 @@ void DrawMenu(void)
       LCD_gotoXY(0, 0);LCD_writeStringInv(buf);
       LCD_gotoXY(0, 1);	LCD_writePMstring(MSG_RightNow);
       LCD_gotoXY(0, 2);	strcpyPM(buf, MSG_On); buf[4] = 0xAB; buf[9] = 0xAB; LCD_writeString(buf);
-      LCD_gotoXY(0, 3);	LCD_writeString("              ");
+      LCD_gotoXY(0, 3);	LCD_writePMstring(MSG_Blank);
       LCD_gotoXY(0, 4);	strcpyPM(buf, MSG_Off); buf[4] = 0xAC; buf[9] = 0xAC; LCD_writeString(buf);
       break;
     }
@@ -895,7 +896,7 @@ void DrawMenu(void)
       LCD_gotoXY(0, 0); LCD_writePMstringInv(MSG_HeaterSchedul);
       LCD_gotoXY(0, 1);	LCD_writePMstring(MSG_OnOff);
       LCD_gotoXY(0, 2);	strcpyPM(buf, MSG_Blank); buf[x] = 0xAB; LCD_writeString(buf);
-      itoa(options.HeaterOnTemp, buf+2, 10); strcpy(strD, "*C    "); strD[0] = 0xBF; strcat(buf, strD); itoa(options.HeaterOffTemp, strD, 10); strcat(buf, strD); strcpy(strD, "*C   ");strD[0] = 0xBF; strcat(buf, strD);
+      itoa(options.HeaterOnTemp, buf+2, 10); strcpyPM(strD, MSG_Celsium1); strD[0] = 0xBF; strcat(buf, strD); itoa(options.HeaterOffTemp, strD, 10); strcat(buf, strD); strcpyPM(strD, MSG_Celsium1);strD[0] = 0xBF; strcat(buf, strD);
       LCD_gotoXY(0, 3);	LCD_writeString(buf);
       LCD_gotoXY(0, 4);	strcpyPM(buf, MSG_Blank); buf[x] = 0xAC; LCD_writeString(buf);
       break;
@@ -918,6 +919,7 @@ void DrawMenu(void)
 			itoa(State.balance, buf, 10); strcat(buf, " R, "); itoa(State.Vbat, strD, 10); strcat(buf, strD); strcat(buf, "V");
 			LCD_gotoXY(0, 1);LCD_writeString(buf);
 */
+			LCD_gotoXY(0, 2);LCD_writeString(DebugStr);
 			strcpy(buf, "N");
 			itoa(Now.MM, strD, 10); strcat(buf, strD);itoa(Now.dd, strD, 10); strcat(buf, strD); strcat(buf, " ");
 			itoa(Now.hh, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.mm, strD, 10); strcat(buf, strD); strcat(buf, ":"); itoa(Now.ss, strD, 10); strcat(buf, strD);
@@ -959,7 +961,7 @@ void ShowStat(void)
   }
   if(State.PumpPause != 0 && options.PumpWorkFlag == 1)
   {
-    strcpy(buf, "Пауза ");
+    strcpyPM(buf, MSG_Pause);
     itoa(State.PumpPause, strD, 10);
     strcat(buf, strD);
     strcat(buf, " сек.   ");
