@@ -590,6 +590,7 @@ void OnKeyPress(void)
 			}
 			case MD_STAT:
 			{
+        LCD_init();
 				break;
 			}
 			case MD_CLEAR:			// Забыть настройки

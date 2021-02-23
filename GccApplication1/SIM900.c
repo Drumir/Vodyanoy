@@ -282,14 +282,27 @@ void SIM900_EnableGPRS(void)
 //----------------------------------------------------------------
 void SIM900_GetBalance(void)
 {
+  uint16_t commaPos = 38;
+  uint16_t debPos = 0;
   if(SIM900Status < SIM900_REG_GSM) return;
   //  uart_send("AT+CUSD=1,\"*120#\"");         // Баланс на английском   AT+CUSD=1,"*120$23"$0d
   uart_sendPM(MSG_Balance);         // Запрос баланса  AT+CUSD=1,"*105*5$23"$0d
   waitMessage(); dropMessage();     // Отбросим эхо
   waitDropOK();     // Отбросим ОК
-  waitMessage();
-	strcpy(DebugStr, (char*)rx.buf+rx.ptrs[0]);
-  State.balance = str2int((char*)rx.buf+rx.ptrs[0]+10);
+  waitMessage();    // Ответ в кириллице придет в виде  +CUSD: 0,"04110430043B0430043D0441002000390035002E003600360020007004430431002E",72
+                    //                               Расшифровка: 0411 0430 043B 0430 043D 0441 0020  "Баланс "
+                    //                                            0039 0039 002E 0038 0035 0020       "99.85 "
+                    //                                            0070 0443 0431 002E                 "руб."
+	strcpy(strS,"-");
+  while(*(rx.buf+rx.ptrs[0]+commaPos+2) == '3')
+  {
+    strS[debPos] = *(rx.buf+rx.ptrs[0]+commaPos+3);
+    commaPos += 4;
+    debPos ++;
+  }
+  strS[debPos] = 0;
+  State.balance = str2int(strS);
+//  State.balance = 33;
   dropMessage();     // Отбросим
 }
 //----------------------------------------------------------------
